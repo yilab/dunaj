@@ -1,0 +1,317 @@
+http://clojure.org/reducers[Reducers] were introduced in Clojure 1.5
+and in version 1.7, http://clojure.org/transducers[transducers] will
+be added to the language. Reducers are however a
+completely optional feature and collection related functions still
+return (mostly lazy) seqs by default. Dunaj makes reducers a new
+default and deemphasizes the role of seqs by making them an
+optional feature for most of the core API.
+
+.Background
+****
+Lazy sequences were for a long time the only abstraction for
+collections in Clojure. Existing collection functions impose specific
+mechanism for collection processing through recursion, forces items to
+be processed sequentially and lazily, and prescribes the form of the
+resulting collection (e.g. by returning Seqs).
+These restrictions can result in a suboptimal performance for
+several types of use cases. This led to the creation of reducers
+library that provides fast but eager reduction of collections.
+Moreover, a concept of folding was introduced that further generalizes
+the order in which items are processed and enables parallel
+support for reduction.
+
+More recently, a concept of transducers further abstracts the
+reduction step by making it independent on a source of the data.
+This allows transducers to be used outside the scope of collection
+transformations. Transducer support was added to the async channels
+and the concept of transducers was lifted from Clojure and
+implemented in multiple languages like Java, Ruby or JavaScript.
+****
+
+Dunaj's initial and the main vision is to create API that uses
+reducers by default and to provide additional reducible data sources
+and consumers of reducible collections. The overhaul of reducers and
+collection related API is Dunaj's biggest experiment.
+Goals of this fifth described experiment are as follows:
+
+* Transform collection related API into one that uses reducers
+  by default
+* Enhance reducers to support straightforward conversion to lazy
+  sequences
+* Provide full API support for transducers
+
+In Dunaj, a collection in a broadest sense is defined as an object
+that implements `IRed` protocol.
+There are no other requirements for collections.
+*In Dunaj, any object is considered a collection as long as
+it is reducible by implementing the IRed
+protocol.*
+Other names for a collection that at least implements `IRed`
+include '`reducible`', '`reducible collection`' or just
+'`a collection`' (last one is the most used in Dunaj docs).
+
+.The `IRed` protocol
+[source,clojure,linesnum]
+--
+(defprotocol IRed
+  "A value protocol for reducible collections."
+  {:predicate 'red?}
+  (-reduce :- Any
+    "Returns the reduction of this with a reducing function
+    reducef and with a starting value init."
+    [this reducef :- AnyFn, init :- Any]))
+--
+
+`map`, `reduce`, `count`, `some` and tons of other functions
+now take collections that have to implement nothing more than
+the `IRed` protocol to work.
+Seqs, immutable, persistent or mutable collections are all providing
+implementations for additional collection protocols besides `IRed`,
+depending on their purpose.
+
+== Collection recipe
+
+*Collection recipe* is defined as an object that usually contains
+a reference to the 'source' collection and which implements `IRed`
+protocol. Rather than storing its items in a memory, the collection
+recipe represents a set of processing steps that will be performed
+(e.g. on a source collection) every time the collection recipe is
+reduced.
+
+IMPORTANT: Major feature of collection recipes is that the resulting
+items that are reduced are not cached but are recomputed each time
+collection recipe is reduced. This can be a potential source of
+performance problems or even bugs (just like lazy seqs brought in
+problems with late realization or holding onto the head of lazy seq).
+
+.Example of a collection transformation recipe
+[source,clojure,linesnum]
+--
+(deftype ^:private Map
+  [coll :- [], mapf :- AnyFn]
+  IRed
+  (-reduce [this reducef init]
+    (let [f (fn [ret val] (reducef ret (mapf val)))]
+      (dunaj.coll.helper/reduce* coll f init))))
+
+(defn my-map :- IRed
+  "Returns a collection that has f applied to each of its items."
+  [f :- AnyFn, coll :- []]
+  (->Map coll f))
+
+(seq (my-map keyword ["foo" "bar" "baz"]))
+;;=> (:foo :bar :baz)
+--
+
+.Example of a collection generator recipe
+[source,clojure,linesnum]
+--
+(deftype ^:private Repeat
+  [val :- Any]
+  IRed
+  (-reduce [this reducef init]
+    (loop [ret init]
+      (if (reduced? ret)
+        ret
+        (recur (reducef ret val))))))
+
+(defn my-repeat :- IRed
+  "Returns an infinite collection of vals."
+  [val :- Any]
+  (->Repeat val))
+
+(vec (take 10 (my-repeat :foo)))
+;;=> [:foo :foo :foo :foo :foo :foo :foo :foo :foo :foo]
+--
+
+== Continuations
+
+In Dunaj, any object correctly implementing `IRed` protocol can be
+converted to a lazy seq in a constant time, as seen in previous
+`my-map` example. This is possible thanks to a new reducers feature
+called postponed reduction.
+
+*Postponed reduction* is a continuation for reductions. Just like
+early reduction termination is represented with a special
+`Reduced` type, the postponed reduction
+is implemented with a `Postponed`
+type.
+
+A postponed object is created with
+`postponed` constructor and holds an
+intermediate result, accessible by dereferencing the postponed object.
+Reduction can be continued by calling
+`advance` or
+`unsafe-advance!`
+functions. Unsafe advances are one shot things, while the safe
+advances can be called more than once, but are slower and not always
+supported.
+
+A reduction can be postponed either by the collection that is being
+reduced or from the reducing function, which is used to reduce the
+collection. In order to correctly support postponed semantics,
+every reduction function and every internal reduce implementation
+has to check for and handle postponed objects. To ease this process,
+Dunaj provides `advance-fn`
+and `cloned-advance-fn`
+helper macros.
+
+.Example of a collection recipe supporting postponed reductions
+[source,clojure,linesnum]
+--
+(deftype ^:private Repeat
+  [val :- Any]
+  IRed
+  (-reduce [this reducef init]
+    (let [af (fn af [ret]
+               (cond (reduced? ret) ret
+                     (postponed? ret)
+                     (postponed @ret
+                                #(af (advance ret))
+                                #(af (unsafe-advance! ret)))
+                     :else (recur (reducef ret val))))]
+      (af init))))
+--
+
+.Collection recipe using Dunaj's helpers for postponed reduction
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.coll.helper :refer [advance-fn]]))
+
+(deftype ^:private Repeat
+  [val :- Any]
+  IRed
+  (-reduce [this reducef init]
+    (let [af (advance-fn [ret]
+               (recur (reducef ret val)))]
+      (af init))))
+
+(defn my-repeat :- IRed
+  "Returns an infinite collection of vals."
+  [val :- Any]
+  (->Repeat val))
+
+(seq (take 10 (my-repeat :foo)))
+;;=> (:foo :foo :foo :foo :foo :foo :foo :foo :foo :foo)
+--
+
+With postponed reductions, Dunaj can provide full lazy support for
+every collection and any combination of transducers (Clojure's
+lazyness support for transducers
+https://groups.google.com/d/topic/clojure/tiMTLJEt9fQ/discussion[is only partial]).
+Moreover, postponed reductions are an elegant representation for
+non-blocking data sources, e.g. non-blocking network I/O.
+
+== Source-aware recipes
+
+Collection recipes have the ability to be source-aware.
+Source awareness means that if the source collection implements
+some additional features, those features may be available in the
+collection recipe that is connected to that source.
+
+Currently, source awareness is implemented for
+`ICounted`,
+`ISectionable` and
+`IFoldable` protocols
+plus two other protocols that are used for performance improvements
+(more on that in the next experiment).
+
+[source,clojure,linesnum]
+--
+;; two counted collections
+(def v1 [1 2 3 4 5])
+(def v2 [6 7 8 9 10])
+
+;; non-counted collection
+(def s1 (cons 1 [2 3 4 5]))
+
+(counted? (concat v1 v2))
+;;=> true
+
+(counted? (concat s1 v2))
+;;=> false
+--
+
+[source,clojure,linesnum]
+--
+;; with source awareness, only items that are absolutely needed are realized
+(let [pf (fn [[i v]] (println! "realized" (->str i ".") "item" v) v)]
+  (as-> "lorem ipsum dolor sit amet" $
+        (indexed $)
+        (map pf $)
+        (section $ 5 10)
+        (vec $)))
+;; realized 5. item
+;; realized 6. item i
+;; realized 7. item p
+;; realized 8. item s
+;; realized 9. item u
+;;=> [\space \i \p \s \u]
+--
+
+== Transducers
+
+Dunaj provides a custom transducers stack, fully independent from
+Clojure's transducers. It replaces Clojure's transducers and provides
+following changes and additions:
+
+* A separate `IReducing` protocol
+  for reduction functions that are processed by transducers
+  (Clojure uses ordinary multiple arity function for that purpose).
+* Ability to create source-aware collection recipes (an equivalent
+  for Clojure's `eduction`)
+* Support for postponed reductions and straightforward conversion into
+  lazy seqs through Dunaj's postponed feature
+* Stateful transducers implemented through wrappers and not
+  through mutable references
+* Support for parallel reduction,
+  a.k.a. `transfold`
+
+Dunaj provides `defreducing`
+and `defxform` helper macros
+for the implementation of custom transducers.
+
+.Example of Map transducer
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.coll :refer [IReducing -step]]
+            [dunaj.coll.helper :refer [defreducing defxform]]))
+
+(defreducing ^:private MapReducing
+  "Reducing type for map"
+  [r :- IReducing, mapf :- AnyFn]
+  (-step [this ret val] (-step r ret (mapf val))))
+
+(defxform my-map
+  "Returns a transducer that applies mapf to each step value."
+  [mapf :- AnyFn]
+  ([r] (->MapReducing r mapf)))
+--
+
+.Transducers are source-aware
+[source,clojure,linesnum]
+--
+(def xf (comp (my-map #(do (println! "item realized") %))
+              (take 10)))
+
+;; note that none items have been realized
+(count (recipe xf (range 10 100))
+;;=> 10
+
+(count (recipe xf (range 10 12))
+;;=> 2
+
+;; not used items are not realized
+(let [coll (recipe xf (range 10 100))]
+  (reduce + (section coll 5)))
+;; an item has been realized
+;; an item has been realized
+;; an item has been realized
+;; an item has been realized
+;; an item has been realized
+;;=> 85
+--

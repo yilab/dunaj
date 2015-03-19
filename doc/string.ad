@@ -1,0 +1,82 @@
+In Dunaj, a `<<dunaj.string.api.ad#String,String>>` type
+represents strings. This type directly maps to the host string
+type, without any wraping.
+
+String is an immutable and
+<<dunaj.coll.spi.ad#IHomogeneous,homogeneous>> collection of
+<<dunaj.char.api.ad#,characters>>.
+String type, constructor, predicates and other related
+functionalities are defined in
+<<dunaj.string.api.ad#,dunaj.string>> namespace.
+
+There is a dedicated abstract type protocol for string-like
+objects called
+`<<dunaj.string.spi.ad#ICharSequence,ICharSequence>>`.
+This protocol is implemented for strings, string sections,
+reversed strings and mutable strings. Moreover, a
+`<<dunaj.string.api.ad#provide_char_sequence,provide-char-sequence>>`
+functions wraps arbitrary indexed collection into an instance
+of `ICharSequence` if needed.
+
+[NOTE]
+Character sequences and strings are immutable but not persistent
+collections. Strings main purpose is to convey a textual
+information and not to be a container of characters. Because of
+this, String is not considered a <<dunaj.coll.api.ad#sequential{under}QMARK{under},sequential collection>>
+and is not even equal to other persistent collections with a same content.
+
+== Features
+
+String objects are collections (can be
+<<dunaj.coll.api.ad#reduce,reduced>> and
+<<dunaj.concurrent.forkjoin.api.ad#fold,folded>>),
+implement natural total ordering
+(can be <<dunaj.compare.api.ad#compare,compared>>),
+are <<dunaj.coll.api.ad#counted{under}QMARK{under},counted>>
+and support random access to their items (via
+<<dunaj.coll.api.ad#nth,nth>>). Just like symbols and keywords,
+strings are <<dunaj.identifier.spi.ad#INamed,INamed>>.
+Strings are also <<dunaj.coll.api.ad#edit,editable>>.
+
+String provide fast reduction by implementing
+`<<dunaj.coll.spi.ad#IBatchedRed,IBatchedRed>>` on chars.
+String support both <<dunaj.coll.api.ad#slice,slicing>>
+(shared-nothing slice) and
+<<dunaj.coll.api.ad#section,sectioning>> (shared subsection).
+Instances of string can be <<dunaj.coll.api.ad#reverse,reversed>>.
+
+As string are collections, a
+`<<dunaj.string.api.ad#string_factory,string-factory>>`
+is provided that implements
+`<<dunaj.coll.spi.ad#ICollectionFactory,ICollectionFactory>>`
+protocol. A convenience constructors
+`<<dunaj.string.api.ad#str,str>>` and
+`<<dunaj.string.api.ad#{under}{under}GT{under}str,-&#62;str>>`
+are provided
+
+[WARNING]
+Dunaj's `<<dunaj.string.api.ad#str,str>>` has a different
+semantics from Clojure's one, which is in Dunaj renamed to
+`->str`.
+
+== Syntax
+
+Dunaj follows Clojure's syntax for string. Following table
+compares syntax for JSON, EDN and CLJ formats:
+
+[options="header,autowidth",cols="<,^,^,^"]
+|===
+| | JSON | EDN | CLJ
+
+| syntax | wrapped in `"` | wrapped in `"` | wrapped in `"`
+
+| may span multiple lines | NO icon:remove[role="red"] | YES | YES
+
+| characters which must be escaped | `"` `\` and control characters (U+0000 to U+001F) | `"` `\` | `"` `\`
+
+| escape characters | `\"` `\\` `\/` `\b` `\f` `\n` `\r` `\t` | `\"` `\\` `\n` `\r` `\t` | `\"` `\\` `\'` `\b` `\f` `\n` `\r` `\t` 
+
+| unicode escapes | `\uNNNN` | NO, not mentioned in specs icon:remove[role="red"] | `\uNNNN`
+
+| octal escapes | NO icon:remove[role="red"] | NO icon:remove[role="red"] | `\0` to `\377`
+|===

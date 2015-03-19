@@ -1,0 +1,36 @@
+{nil
+ ";;; CLJ format provides syntax for vectors. HAMT vectors are used for those literals.
+
+   [1 2 3 4 5]
+
+   ;;; convenience functions for vectors
+
+   (->vec 1 2 3 4 5)
+   ;;=> [1 2 3 4 5]
+
+   (vec '(1 2 3 4 5))
+   ;;=> [1 2 3 4 5]
+
+   ;;; Using empty-vec (tuples are used for small vectors)
+
+   (conj empty-vec 1 2 3 4 5)
+   ;;=> [1 2 3 4 5]
+
+   (into empty-vec '(1 2 3 4 5))
+   ;;=> {:c 3, :b 2, :a 1}
+
+   ;;; using [] has the same effect as using empty-vec, but uses HAMT vector regardless of vector size
+
+   (conj [] 1 2 3 4 5)
+   ;;=> [1 2 3 4 5]"
+ hamt-vector-factory
+ "(ns foo.bar
+     (:api dunaj)
+     (:require [dunaj.coll :refer [->collection collection]]
+               [dunaj.coll.hamt-vector :refer [hamt-vector-factory]]))
+
+   (->collection hamt-vector-factory 1 2 3 4 5)
+   ;;=> [1 2 3 4 5]
+
+   (collection hamt-vector-factory '(1 2 3 4 5))
+   ;;=> [1 2 3 4 5]"}

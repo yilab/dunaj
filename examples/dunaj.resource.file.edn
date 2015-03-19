@@ -1,0 +1,14 @@
+{nil
+ ["(with-scope
+  (config (acquire! (file \"project.clj\")))
+;;=> #dunaj.resource.file.FileResourceFactory{:uri #uri \\\"file:///data/proj/dunaj/./project.clj\\\", :mode [:read :write :create], :batch-size 8192, :file-system #<LinuxFileSystem sun.nio.fs.LinuxFileSystem@35267b1e>, :working-directory nil})"
+   "(with-scope (str (take 20 (slurp \"project.clj\"))))
+;;=> \"(defproject dunaj \\\"1\"
+
+;; append by default
+(with-scope (spit! \"out.txt\" \"lorem ipsum\"))
+;;=> 11
+
+;; custom mode
+(with-scope (spit! \"out.txt\" \"lorem ipsum\" :truncate))
+;;=> 11"]}

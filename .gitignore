@@ -1,0 +1,15 @@
+.lein-deps-sum
+.lein-plugins
+.lein-repl-history
+.nrepl-port
+pom.xml
+pom.xml.*
+/*.json
+/*.edn
+*jar
+/pom.xml
+/lib
+/target
+/out
+/gh-pages
+/checkouts

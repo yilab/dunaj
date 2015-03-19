@@ -1,0 +1,25 @@
+I'm happy to announce a project called Dunaj, which provides an
+alternative core API for Clojure. Its main aim is to experimentally
+test major additions to the language. 
+
+Dunaj /ˈdunaɪ/ is a set of core language experiments aimed to improve
+Clojure language and its core API. It deals with language features
+that require changes across different parts of Clojure and which
+cannot be evaluated in isolation. Dunaj aims to bring Clojure even
+more towards simplicity, consistency and performance. 
+It is intended to be used by regular Clojure developers, either for
+application or library development.
+
+Dunaj was created to test 10 large experiments that bring significant
+changes to the Clojure language. As there is a substantial number of
+additions and changes, I want to try a bit unconventional approach
+here. Before I'll release the actual library, I will introduce Dunaj's
+experiments in a series of individual posts. Every part states the
+motivation behind the experiment, introduces changes and additions to
+the language and demonstrates its intended use. If you do not want to
+miss any of this, you may want to register for a mailing list or
+follow @dunajproject at Twitter.
+
+++++
+<div id="blo"></div>
+++++

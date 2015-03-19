@@ -1,0 +1,50 @@
+{boolean
+ ["(boolean :foo)
+   ;;=> true
+
+   (boolean nil)
+   ;;=> false
+
+   (boolean false)
+   ;;=> false
+
+   (boolean (java.lang.Boolean. false))
+   ;;=> false"
+  "(false? false)
+   ;;=> true
+
+   (false? java.lang.Boolean/FALSE)
+   ;;=> true
+
+   (false? (java.lang.Boolean. false))
+   ;;=> false
+
+   (false? (boolean (java.lang.Boolean. false)))
+   ;;=> true"]
+ true?
+ ["(true? true)
+   ;;=> true
+
+   (true? :foo)
+   ;;=> false
+
+   (true? java.lang.Boolean/TRUE)
+   ;;=> true
+
+   (true? (java.lang.Boolean. true))
+   ;;=> false
+
+   (true? (boolean (java.lang.Boolean. true)))
+   ;;=> true"]
+ false?
+ ["(false? false)
+   ;;=> true
+
+   (false? nil)
+   ;;=> false
+
+   (false? (java.lang.Boolean. false))
+   ;;=> false
+
+   (false? (boolean (java.lang.Boolean. false)))
+   ;;=> true"]}

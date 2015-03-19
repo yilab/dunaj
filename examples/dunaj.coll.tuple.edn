@@ -1,0 +1,35 @@
+{tuple
+ ["(tuple 1 2 3 4 5)
+   ;;=> [1 2 3 4 5]
+
+   (flip (tuple 1 2 3 4 5))
+   ;;=> [5 4 3 2 1]"]
+ key
+ ["(seq (map key {:a 1 :b 2}))
+   ;;=> (:b :a)"]
+ val
+ ["(seq (map val {:a 1 :b 2}))
+   ;;=> (2 1)"]
+ pair
+ ";; pair is faster than destructuring but more verbose
+  (defn foo [[k v]]
+      (+ k v))
+  ;;=> #'foo.bar/foo
+
+  (defn foo-pair [p]
+    (let [k (key p)
+          v (val p)]
+      (+ k v)))
+  ;;=> #'foo.bar/foo-pair
+
+  (time (dotimes [x 1000000] (foo [x x])))
+  ;; Elapsed time: 400.177109 msecs
+  ;;=> nil
+
+  (time (dotimes [x 1000000] (foo (pair x x))))
+  ;; Elapsed time: 300.855405 msecs
+  ;;=> nil
+
+  (time (dotimes [x 1000000] (foo-pair (pair x x))))
+  ;; Elapsed time: 264.42369 msecs
+  ;;=> nil"}

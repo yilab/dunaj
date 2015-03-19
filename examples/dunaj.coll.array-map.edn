@@ -1,0 +1,47 @@
+{nil
+ ";;; Array map is a default map implementation in Dunaj
+
+;;; CLJ format provides syntax for maps.
+
+{:a 1 :b 2 :c 3}
+
+;;; convenience functions for maps
+
+(->map :a 1 :b 2 :c 3)
+;;=> {:c 3, :b 2, :a 1}
+
+(zipmap [:a :b :c] [1 2 3])
+;;=> {:a 1, :b 2, :c 3}
+
+;;; Using empty-map
+
+(assoc empty-map :a 1 :b 2 :c 3)
+;;=> {:c 3, :b 2, :a 1}
+
+(conj empty-map [:a 1] [:b 2] [:c 3])
+;;=> {:c 3, :b 2, :a 1}
+
+(into empty-map [[:a 1] [:b 2] [:c 3]])
+;;=> {:a 1, :b 2, :c 3}
+
+;;; using {} has the same effect as using empty-map
+
+(assoc {} :a 1 :b 2 :c 3)
+;;=> {:c 3, :b 2, :a 1}"
+ array-map-factory
+ "(ns foo.bar
+  (:api dunaj)
+    (:require [dunaj.coll :refer [->collection collection ->convolution convolution]]
+              [dunaj.coll.array-map :refer [array-map-factory]]))
+
+(->collection array-map-factory [:a 1] [:b 2] [:c 3])
+;;=> {:c 3, :b 2, :a 1}
+
+(collection array-map-factory [[:a 1] [:b 2] [:c 3]])
+;;=> {:a 1, :b 2, :c 3}
+
+(->convolution array-map-factory :a 1 :b 2 :c 3)
+;;=> {:c 3, :b 2, :a 1}
+
+(convolution array-map-factory [:a :b :c] [1 2 3])
+;;=> {:a 1, :b 2, :c 3}"}

@@ -1,0 +1,220 @@
+Dunaj provides an *alternative core API for the Clojure*. Its main aim
+is to experimentally test major additions to the language. Dunaj
+deals with language features that require changes across different
+parts of Clojure and which cannot be evaluated in isolation.
+
+Dunaj is not an academic endeavour. It is focused on being practical
+and a significant effort was made to provide implementation that is
+backwards compatible with Clojure. Dunaj code integrates well with
+existing Clojure libraries and tools.
+Dunaj's main goal is to bring Clojure even more towards *simplicity*,
+*consistency* and *performance*.
+See <<rationale.ad#,design and rationale>> for more information about
+Dunaj's design and motivations.
+
+=== Dunaj Experiments
+
+Dunaj focuses on number of experiments, which are described in more
+detail in a separate <<guide.ad#,crash course for
+Clojure developers>>.
+List of Dunaj experiments with brief description follows:
+
+[cols="a,a"]
+|===
+
+| icon:sitemap[]&nbsp; *Deconstructed API*
+
+* Core functionalities split into several namespaces
+* API 'presets' that automatically refer commonly used vars
+* Bootstrapping and low level stuff no longer part of a public API
+
+| icon:tags[]&nbsp; *Type signatures*
+
+* Signatures independent from type checking or validation tools
+* Type aware syntax for `def`-like macros, `let`, `loop` and `fn`
+* Automatic generation of host type hints
+
+| icon:plug[]&nbsp; *Protocols first*
+
+* Using protocols and deftypes instead of host interfaces and classes
+* Separate SPI and helper functions for custom language extensions
+* Protocol factories for explicit extensions of abstract data types
+
+| icon:bars[]&nbsp; *Simplified API*
+
+* Core functions work on top of protocols, not concrete types
+* Fully qualified special symbols
+* Consistent conventions for names
+
+| icon:puzzle-piece[]&nbsp; *Reducers first*
+
+* Collection functions return collection recipes instead of lazy seqs
+* A continuation for reductions
+* Multireducibles, foldable transducers
+
+| icon:rocket[]&nbsp; *Host Performance*
+
+* More primitive types for function arguments and return values
+* Dedicated namespace for working with host primitive integers
+* Low level data containers for bulk data processing
+
+| icon:file-archive-o[]&nbsp; *Data Formatters*
+
+* Parsers with transducer support and optional lazy parsing
+* Printers with transducer support and pretty printing
+* Built-in formatters for UTF-8, JSON, EDN/CLJ and more
+
+| icon:cubes[]&nbsp; *Resources*
+
+* Reducible blocking and non-blocking I/O, network resources
+* Scopes, a GC for resources
+* Systems, a concept for managing the lifecycle of resources
+
+| icon:plus[]&nbsp; *Improved Math*
+
+* Facilities for rounding, with both decimal and significant digits
+  precision
+* Reducible secure random number generators with transducer support
+* Math functions of an angle, exponentiations and logarithms
+
+| icon:book[]&nbsp; *Documentation*
+
+* User friendly and comprehensive documentation
+* Dedicated metadata keys for IDEs
+* Facilities for generating documentation
+
+|===
+
+=== Dunaj Specification
+
+See <<spec.ad#,specification page>> for a description of
+Dunaj's concepts, types, facilities and conventions.
+
+=== API
+
+API provided by Dunaj is designed as an alternative to `clojure.core`
+API. See <<api.ad#,Dunaj API page>> for list of all namespaces and
+their vars. By design, Dunaj API is more user-centric, omiting
+bootstrapping and low level stuff. Functionalities are
+divided into separate namespaces, which prevents name clashes.
+
+Having core vars in separate namespaces may worsen the tedious
+task of requiring multiple namespaces for handling basic stuff
+(instead of just requiring one `clojure.core`).
+To make this more bearable, Dunaj API preset automatically refers
+most commonly used vars. See `<<dunaj.core.api.ad#,dunaj.core>>` for
+list of automatically referred vars.
+
+NOTE: An additional preset called `<<bare.core.api.ad#,bare>>`
+is provided that does not refer to any var, special symbols or host
+classes. Use this preset if complete control of what is referred in
+the namespace is needed.
+
+++++
+<input type="checkbox" class="dd-example-check" id="toggle-1"><label class="dd-example-label" for="toggle-1">example of using different APIs</label>
+++++
+
+[source,clojure,linesnum]
+--
+;; classic Clojure API
+(ns foo.bar)
+
+(time (reduce + (take 100000 (range))))
+;; Elapsed time: 42.034772 msecs (Clojure 1.7 alpha5)
+;;=> 4999950000
+--
+
+[source,clojure,linesnum]
+--
+;; new Dunaj API
+(ns foo.bar
+  (:api dunaj))
+
+(time (reduce + (take 100000 (range))))
+;; Elapsed time: 15.84147 msecs
+;;=> 4999950000
+--
+
+[source,clojure,linesnum]
+--
+;; Bare API, no symbols refered, not even special symbols or host classes
+(ns foo.bar
+  (:api bare))
+
+(+ 1 2)
+;; java.lang.RuntimeException: Unable to resolve symbol: + in this context
+
+(if true 1 2)
+;; java.lang.RuntimeException: Unable to resolve symbol: if in this context
+
+String
+;; java.lang.RuntimeException: Unable to resolve symbol: String in this context
+--
+
+=== Extending Dunaj
+
+In Dunaj, a significant effort was put into providing an extensible
+API, so that users can create new types of collections, resources,
+formatters, etc. Such user created types work seamlessly with most
+functions defined in Dunaj API. This has been achieved by defining
+more than a hundred public *protocols* that are used to define
+virtually every extensible functionality in Dunaj. Moreover,
+*helper functions* are available for tasks that often occur when
+implementing custom types or functionalities.
+
+++++
+<input type="checkbox" class="dd-example-check" id="toggle-2"><label class="dd-example-label" for="toggle-2">example of using Dunaj's protocols and helper functions</label>
+++++
+
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.coll :refer [ISectionable ICounted]]
+            [dunaj.concurrent.forkjoin :refer [IFoldable]]
+            [dunaj.coll.helper :refer [advance-fn fold-sectionable prepare-ordered-section]]))
+
+(deftype FiniteRepeat
+  [n :- Integer, val :- Any]
+  IRed
+  (-reduce [this reducef init]
+    (let [af (advance-fn [ret i]
+               (zero? i) ret
+               :else (recur (reducef ret val) (dec i)))]
+      (af init n)))
+  IFoldable
+  (-fold [this reduce-fn pool n combinef reducef]
+    (fold-sectionable this reduce-fn pool n combinef reducef))
+  ICounted
+  (-count [this] n)
+  ISectionable
+  (-section [this nb ne]
+    (let [l (count this)
+          ne (prepare-ordered-section nb ne l)]
+      (if (and (zero? nb) (== ne l))
+        this
+        (->FiniteRepeat (- ne nb) val)))))
+
+(defn finite-repeat :- IRed
+  "Returns a collection of vals of length n."
+  [n :- Integer, val :- Any]
+  (->FiniteRepeat n val))
+--
+
+Those same protocols and helper functions are used in Dunaj's
+built-in types, so that custom types can be seamlesly integrated
+into Dunaj. Protocols and their respective methods are described in
+<<spi.ad#,separate Dunaj SPI>> part of the documentation. In addition,
+Dunaj API provides helper functions in following namespaces:
+
+* `<<dunaj.coll.helper.api.ad#,dunaj.coll.helper>>` - Helpers for
+  implementing new collection types
+* `<<dunaj.format.helper.api.ad#,dunaj.format.helper>>` - Helpers for
+  implementing custom parsers or printers.
+* `<<dunaj.format.parser.api.ad#,dunaj.format.parser>>` - Tokenizer
+  and Parser engine for implementing custom tokenizers, parsers and
+  lazy parsers.
+* `<<dunaj.format.printer.api.ad#,dunaj.format.printer>>` - Printer
+  engine for implementing custom printers and pretty printers.
+* `<<dunaj.resource.helper.api.ad#,dunaj.resource.helper>>` - Helpers
+  for implementing new resource types

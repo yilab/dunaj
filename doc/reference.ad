@@ -1,0 +1,123 @@
+References are objects that point to other objects. References are
+usually mutable, i.e. they have a state.
+
+.State related namespaces
+****
+* <<dunaj.state.api.ad#,dunaj.state>> - Stateful objects. References,
+  mutation, cloning, etc.
+* <<dunaj.state.basic.api.ad#,dunaj.state.basic>> - Atom, Box, Local
+  and other basic reference types
+* <<dunaj.state.ref.api.ad#,dunaj.state.ref>> - Refs, a transactional
+  references that use software transactional memory (STM) for safe
+  shared use of mutable references
+* <<dunaj.state.var.api.ad#,dunaj.state.var>> -  Vars, references with
+  mutable root binding and thread local bindings that can be rebound
+  dynamically
+* <<dunaj.state.weak.api.ad#,dunaj.state.weak>> - Weak and soft
+  references
+
+Stateful objects that represent the result of an asynchronous
+computation are described in the <<concurrent.ad,Concurrency>> page.
+
+Stateful objects that represent the system or network resource
+are described in the <<resource.ad,Resources>> page.
+****
+
+Dunaj defines following basic references:
+
+* `<<dunaj.state.basic.api.ad#box,box>>` - A basic immutable
+  reference
+* `<<dunaj.state.basic.api.ad#local,local>>` - A thread local
+  reference
+* `<<dunaj.state.basic.api.ad#unsynchronized-reference,unsynchronized-reference>>`
+  - A low level unsynchronized reference
+* `<<dunaj.state.basic.api.ad#volatile-reference,volatile-reference>>`
+  - A low level volatile reference
+* `<<dunaj.state.basic.api.ad#atom,atom>>` - A reference that manages
+  synchronous state
+* `<<dunaj.state.ref.api.ad#ref,ref>>` - A transactional reference
+  that uses software transactional memory (STM)
+* `<<dunaj.state.var.api.ad#var,Var>>` - A references with mutable
+  root binding and thread local bindings that can be rebound
+  dynamically.
+* `<<dunaj.state.weak.api.ad#weak,weak>>` and
+  `<<dunaj.state.weak.api.ad#soft,soft>>` references that control the
+  garbage collection of the values they point to
+
+The very basic feature of a reference is that it can be
+<<dunaj.state.api.ad#deref,dereferenced>> in order to get it's
+current state. This property is in Dunaj represented by
+`<<dunaj.state.spi.ad#IReference,IReference>>` and
+`<<dunaj.state.spi.ad#IBlockingReference,IBlockingReference>>`
+protocols.
+
+The way how a reference object changes its state depends on the type
+of the reference. Following protocols are available:
+
+* `<<dunaj.state.spi.ad#IMutable,IMutable>>` - support for basic
+  value change with
+  `<<dunaj.state.api.ad#reset{under}BANG{under},reset!>>`
+* `<<dunaj.state.spi.ad#IAdjustable,IAdjustable>>` - support for
+  setting part of the referenced value, with
+  `<<dunaj.state.api.ad#adjust{under}BANG{under},adjust!>>`
+* `<<dunaj.state.spi.ad#IAtomic,IAtomic>>` - Signals the reference
+  supports synchronous change to the state. Enabled the use of
+  `<<dunaj.state.api.ad#cas{under}BANG{under},cas!>>`,
+  `<<dunaj.state.api.ad#switch{under}BANG{under},switch!>>`,
+  `<<dunaj.state.api.ad#alter{under}BANG{under},alter!>>` and
+  `<<dunaj.state.api.ad#trade{under}BANG{under},trade!>>`
+
+Dunaj further provides several protocols and functions that are used
+to define and manage auxiliary state (e.g. pending status of lazy
+seqs, open status for resources)
+
+Dunaj streamlines the cloning of reference objects by introducing
+`<<dunaj.state.spi.ad#ICloneable,ICloneable>>` protocol.
+The `<<dunaj.state.api.ad#clone,clone>>` function returns a cloned
+object. Value objects returns themselves and references that
+do not support cloning must throw.
+
+== State
+
+DRAFT
+
+Value:
+
+* immutable
+* an expression that cannot be evaluated any further
+* number, constant, fact?
+* 'A value is a location on a dimension, and may be quantitative or
+  qualitative'.
+
+State:
+
+* objects's value at a point in time
+* actual value of a reference
+* can change
+* ability of an object to relate to a different value in different
+  points of time
+* object can have multiple such states. Even some value objects have
+  an auxiliary state
+
+Stateful:
+
+* contains state and has the ability to manage it and to put
+  object/reference into other state (associate object with different
+  value), initiated by either user or some external forces.
+
+Stateful types:
+
+http://lambda-the-ultimate.org/node/2425
+
+"observability: an operation is said to be stateful if you can
+observe that its state has changed, e.g. by repeating the same
+operation with the same arguments but getting different results.
+Such an operation depends on state which is not provided as part of
+invoking the operation."
+
+http://lalitpant.blogspot.com/2008/01/object-state-identity-immutability-and.html
+
+"an object has state if its behavior (as defined by its methods) may
+observably change over the course of time. In other words, the output
+of (the methods of) a stateful object is determined not only by the
+input received, but also by some modifiable internal state."

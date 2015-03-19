@@ -1,0 +1,29 @@
+{nil
+ "(ns foo.bar
+  (:api dunaj)
+  (:require
+   [dunaj.host :refer [ArrayManager]]
+   [dunaj.host.array :refer [array array-manager-from]]
+   [dunaj.host.int :refer [Int iint iloop i== iinc iadd imul i0 i1 i31]]))
+
+(defn array-hash :- Int
+  \"Compute host hash code for an array section.\"
+  [am :- ArrayManager, arr :- Array, begin :- Int, end :- Int]
+  (iloop [i (iint begin), ret (i1)]
+    (if (i== i end)
+      ret
+      (let [v (.get am arr i)]
+        (recur
+         (iinc i)
+         (iadd (if (nil? v) (i0) (.hashCode ^java.lang.Object v))
+               (imul (i31) ret)))))))
+;;=> #'foo.bar/array-hash
+
+(def arr (array [0 1 2 3 4 5 6 7 8 9]))
+;;=> #'foo.bar/arr
+
+(.hashCode [5 6 7 8])
+;;=> 1078467
+
+(array-hash (array-manager-from arr) arr 5 9)
+;;=> 1078467"}

@@ -1,0 +1,58 @@
+Dunaj, like Clojure, provides comparison facilities that use identity
+and value based comparison.
+
+Comparison and hashing facilities are defined in
+<<dunaj.compare.api.ad#,dunaj.compare>> namespace.
+
+Every object has an identity, whether it is a value object, stateful
+reference or a primitive value. Dunaj provides
+`<<dunaj.compare.api.ad#identical{under}QMARK{under},identical?>>`
+function for identity based comparison.
+
+There is usually a distinction between object's identity and a
+value this object conveys. Comparison based on value is done with a
+`<<dunaj.compare.api.ad#{under}EQ{under},&#61;>>`
+function. User defined types can provide a custom implementation for
+value comparison by extending an
+`<<dunaj.compare.spi.ad#IEquiv,IEquiv>>` protocol.
+If no implementation is provided, a comparison based on object's
+identity is used.
+
+NOTE: When comparing numbers, a dedicated comparision function
+`<<dunaj.math.api.ad#{under}EQ{under}{under}EQ{under},&#61;&#61;>>`
+should be used instead of `=`.
+
+<<dunaj.compare.api.ad#,dunaj.compare>> namespace also provides
+facilities for creating sentinel objects and nil coding (e.g. for use
+in core.async channels).
+
+Some types also support natural total ordering. This feature is
+available in Dunaj through `<<dunaj.compare.api.ad#compare,compare>>`
+function and `<<dunaj.compare.spi.ad#IComparable,IComparable>>`
+protocol.
+
+== Hash
+
+Every object has a `<<dunaj.compare.api.ad#hash,hash>>` value,
+that can be used e.g. for a rapid data lookup in a hash map.
+As value objects that have a same value must also have a same hash,
+Dunaj provides `<<dunaj.compare.spi.ad#IHash,IHash>>` protocol for
+custom hash.
+
+For some types, such as sequences, the object's hash can be computed
+incrementally. This property can be in certain cases further exploited
+to compute hash much faster (e.g. conjoining value to the list). An
+`<<dunaj.compare.spi.ad#IHashBasis,IHashBasis>>` protocol together
+with
+`<<dunaj.compare.api.ad#hash_basis,hash-basis>>` and
+`<<dunaj.compare.api.ad#hash{under}from{under}basis,hash-from-basis>>`
+functions can be used for incremental hashing. Moreover, dunaj
+provides
+`<<dunaj.compare.api.ad#unordered{under}hash{under}factory,unordered-hash-factory>>` and 
+`<<dunaj.compare.api.ad#ordered{under}hash{under}factory,ordered-hash-factory>>`
+for the computation of collections in line with the way hash is
+computed in the built-in collection types.
+
+WARNING: The incremental hash feature is a very early experiment
+with rudimentary features and has currently a nearly
+non-existent support in Dunaj's built-in collections.

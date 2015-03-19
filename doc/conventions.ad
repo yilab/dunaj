@@ -1,0 +1,105 @@
+== API/SPI
+
+API includes vars that refer to
+
+* functions
+* macros
+* types, type signatures
+* constants, dynamic vars or other values
+
+API must not contain:
+
+* special symbols
+* dynamic vars
+** `dunaj.repl` is a small exception from this rule
+* host classes or interfaces
+* generated deftypes constructors (positional or named)
+
+SPI includes
+
+* protocols
+* protocol methods
+
+Only vars that have `:added` metadata and are not private are
+included in the API
+
+
+== Docstring conventions
+
+* defprotocol: "This is" ...
+* deftype: "This is" ...
+* defn: "This is a function that" ...
+* def: "This is a Var that holds" ...
+
+
+== Naming conventions
+
+* protocols, types and type signatures are camel cased
+* host names are host specific
+* all other names are hyphenated and in lower case
+
+Overly long names (like `unsynchronized-reference`) denote functions
+that are less often needed, or they represent a very specific
+functionality that requires an experienced programmer.
+
+* protocol name starts with big letter 'I'
+* name of an abstract type protocol is a noun
+  (e.g. IPersistentVector)
+* name of a feature protocol is an adjective (e.g. ICounted)
+* name of a factory protocol is an adjective which ends with
+  'Factory' (e.g. ICollectionFactory)
+
+
+=== Prefixes
+
+Functions with same prefixes usually provide a similar kind of
+functionality.
+
+* `-*` names a protocol method
+* `default-*` holds a dynamic var
+* `empty-*` holds an empty object of a specific type
+* `ensure-*` throws if a specific requirement is not met
+* `provide-*` returns its argument, adjusted if needed
+  (casting, enlarging, etc.)
+* `->*` names a positional constructor
+* `with-*` names a macro that takes an optional map as its first
+  argument
+* `def*` names a macro that interns a var in a namespace.
+  Such macros should only be used as top level forms.
+
+
+=== Suffixes
+
+Functions with suffixes often have a variant without one that is
+related to the suffixed function.
+
+* `!` names a function with side effects, which is usually not safe
+  (or possible) to call within a ref transaction
+* `?` names a predicate function that returns a primitive boolean
+  value
+* `*` names a supplementary function
+* `-factory` names a factory var
+
+
+== Collections
+
+* collection has items, not elements
+* collection - Implements IRed, can call reduce or seq on it.
+  There are no other requirements for a collection.
+* collection recipe - collection that recomputes each time it is
+  reduced or converted to seq.
+* immutable/persistent - already computed collection or computes at
+  most once
+* seq - persistent collection that implements ISeq
+* mutable collection - transients
+
+
+== Mutable objects
+
+Mutable protocols define methods with specific requirement that after
+the method finishes and returns the result, the mutable
+object which was the input into the method is rendered unusable.
+It must not be used further in any way and produces an undefined
+result when passed to any function.
+This includes functions like `identical?` or `type`.
+The returned object should be used instead.

@@ -1,0 +1,48 @@
+{nil
+ ";;; Batched queue is a default queue implementation in Dunaj
+
+   ;;; convenience functions for queues
+
+   (->que 1 2 3 4 5)
+   ;;=> #<PersistentQueue clojure.lang.PersistentQueue@1c3e4a2>
+
+   (que [1 2 3 4 5])
+   ;;=> #<PersistentQueue clojure.lang.PersistentQueue@1c3e4a2>
+
+   ;; note that in CLJ format, there is no special syntax for queues.
+   ;; you can use e.g. seq to print its contents.
+
+   (seq (->que 1 2 3 4 5))
+   ;;=> (1 2 3 4 5)
+
+   ;;; Using empty-que
+
+   (conj empty-que 1 2 3 4 5)
+   ;;=> #<PersistentQueue clojure.lang.PersistentQueue@1c3e4a2>
+
+   (into empty-que [1 2 3 4 5])
+   ;;=> #<PersistentQueue clojure.lang.PersistentQueue@1c3e4a2>
+
+   ;; peek returns the front (first) item
+   (peek (->que 1 2 3 4 5))
+   ;;=> 1
+
+   ;; pop removes front (first) item
+   (seq (pop (->que 1 2 3 4 5)))
+   ;;=> (2 3 4 5)
+
+   ;; conj inserts into the rear
+   (seq (conj (->que 1 2 3 4 5) :foo))
+   ;;=> (1 2 3 4 5 :foo)"
+ batched-queue-factory
+ "(ns foo.bar
+     (:api dunaj)
+     (:require [dunaj.coll :refer [->collection collection]]
+               [dunaj.coll.batched-queue :refer [batched-queue-factory]]))
+
+   (->collection batched-queue-factory 1 2 3 4 5)
+   ;;=> #<PersistentQueue clojure.lang.PersistentQueue@1c3e4a2>
+
+   (collection batched-queue-factory [1 2 3 4 5])
+   ;;=> #<PersistentQueue clojure.lang.PersistentQueue@1c3e4a2>"
+ }

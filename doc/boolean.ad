@@ -1,0 +1,42 @@
+A `<<dunaj.boolean.api.ad#Boolean,Boolean>>` is a concrete type that
+has two values, called `true` and `false`. These values represent
+logical truth values and are used in conditionals.
+
+Dunaj (and Clojure) performs an automatic coercion to `Boolean`
+when e.g. calling a function that expects a boolean argument.
+By definition, `nil` and `false` coerce to `false`, any other
+value coerces to `true`.
+
+TIP: JVM host specific: Dunaj supports primitive booleans as
+function arguments and return values (subject to the number of
+arguments and combination of argument types).
+
+[WARNING]
+--
+JVM host specific: `false` is identical to http://docs.oracle.com/javase/8/docs/api/java/lang/Boolean.html#FALSE[`Boolean/FALSE`], so
+using other instances of http://docs.oracle.com/javase/8/docs/api/java/lang/Boolean.html[`java.lang.Boolean`] may lead to surprising
+results. In such cases, you may want to use
+`<<dunaj.boolean.api.ad#boolean,boolean>>` function,
+which coerces into correct boolean value.
+
+[source,clojure,linesnum]
+----
+(if (java.lang.Boolean. false) :is-true :is-false)
+;;=> :is-true
+
+(if (boolean (java.lang.Boolean. false)) :is-true :is-false)
+;;=> :is-false
+----
+--
+
+Boolean type, constructor, predicates and other related
+functionalities are defined in <<dunaj.boolean.api.ad#,dunaj.boolean>>
+namespace.
+
+Boolean has a dedicated syntax in `CLJ`.
+[options="header,autowidth",format="csv",cols="<,^,^,^"]
+|===
+ , JSON, EDN, CLJ
+true literal, `true`, `true`, `true`
+false literal, `false`, `false`, `false`
+|===

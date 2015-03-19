@@ -1,0 +1,90 @@
+{acquire!
+ "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource :refer [size]]))
+
+(with-scope
+  (size (acquire! (file \"src/clj/dunaj/resource.clj\"))))"
+ format
+ "(with-io-scope
+  (->> (resource \"http://example.com\")
+       acquire!
+       (format utf-8)
+       read!
+       (take 50)
+       str))
+;;=> \"<!doctype html>\\n<html>\\n<head>\\n    <title>Example D\"
+
+;; using slurp convenience function
+(with-scope (str (take 50 (slurp \"http://example.com\"))))
+;;=> \"<!doctype html>\\n<html>\\n<head>\\n    <title>Example D\""
+ read
+ "(def v
+  (with-io-scope
+    (vec (read (resource \"http://md5.jsontest.com/?text=Dunaj\")))))
+;;=> #'foo.baz/v
+
+v
+;;=> [123 10 32 32 32 34 109 100 53 34 58 32 34 98 52 99 53 98 54 53 97 50 55 57 98 100 49 97 51 57 49 51 55 49 50 100 57 55 97 55 52 55 50 53 54 34 44 10 32 32 32 34 111 114 105 103 105 110 97 108 34 58 32 34 68 117 110 97 106 34 10 125 10]
+
+(parse-whole json (parse utf-8 v))
+;;=> {\"md5\" \"b4c5b65a279bd1a3913712d97a747256\", \"original\" \"Dunaj\"}"
+ read!
+ "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource.loopback :refer [loopback]]))
+
+(def p (grab-scope (acquire! (loopback))))
+;;=> #'foo.baz/p
+
+(def res (key p))
+;;=> #'foo.baz/res
+
+(def scope (val p))
+;;=> #'foo.baz/scope
+
+(thread (io! (dored [x (lines (parse utf-8 (read! res)))]
+                    (println! x)))
+        (println! \"done\"))
+;;=> #<ManyToManyChannel clojure.core.async.impl.channels.ManyToManyChannel@3b93ef2a>
+
+(write! res (print utf-8 \"lorem ipsum dolor\\nsit amet\\n\"))
+;;=> 27
+
+(write! res (print utf-8 \"consectetur adipiscing elit\\n\"))
+;; lorem ipsum dolor
+;; sit amet
+;;=> 28
+
+(release-scope! scope)
+;; consectetur adipiscing elit
+;; done
+;;=> {:items ({:value #<WeakReference java.lang.ref.WeakReference@4788ef0>})}"
+ resource
+ "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource.loopback :refer [loopback]]))
+
+;; matches uri scheme to the list of registered resource factories
+(resource \"http://example.com\")
+;;=> #dunaj.resource.http.HttpResourceFactory{:uri \"http://example.com\", :proxy nil, :secure? false, :allow-ui? nil, :timeout nil, :use-caches? nil, :follow? nil, :request-properties nil, :request-method nil, :chunked-streaming nil, :hostname-verifier nil, :ssl-context nil, :batch-size nil}
+
+;; no scheme means file resource
+(resource \"file.txt\")
+;;=> #dunaj.resource.file.FileResourceFactory{:uri \"file.txt\", :mode [:read :write :create], :batch-size nil, :file-system nil, :working-directory nil}
+
+;; another example, a client tcp connection
+(resource \"tcp://localhost:8081\")
+;;=> #dunaj.resource.tcp.TcpResourceFactory{:uri \"tcp://localhost:8081\", :remote-address nil, :remote-port nil, :local-address nil, :local-port nil, :batch-size nil, :non-blocking? nil, :keep-alive? false, :in-buffer-size nil, :out-buffer-size nil, :linger nil, :no-delay? false, :reuse? nil, :selector-provider nil}"
+ slurp
+ "(with-scope (str (take 50 (slurp \"http://example.com\"))))
+;;=> \"<!doctype html>\\n<html>\\n<head>\\n    <title>Example D\""
+ spit!
+ ";; append by default
+(with-scope (spit! \"out.txt\" \"lorem ipsum\"))
+;;=> 11
+
+;; custom mode
+(with-scope (spit! \"out.txt\" \"lorem ipsum\" :truncate))
+;;=> 11"
+ }

@@ -1,0 +1,20 @@
+{html
+ "(str (print-one html [:p :para \"Lorem ipsum\"]))
+;;=> \"<p class=\\\"para\\\">Lorem ipsum</p>\"
+
+(str (print-one html [:h1 'heading \"Foo foo\"]))
+;;=> \"<h1 id=\\\"heading\\\">Foo foo</h1>\"
+
+(str (print-one html [:a {:src \"http://example.com\"} \"example\"]))
+;;=> \"<a src=\\\"http://example.com\\\">example</a>\"
+
+(str (print html [[:div :container
+                   [:div 'left
+                    [:ul
+                     [:li \"foo\"]
+                     [:li \"bar\"]
+                     [:li \"baz\"]]]
+                   [:div 'main
+                    [:p \"Lorem ipsum dolor sit amet\"]
+                    [:p \"consectetur adipiscing elit\"]]]]))
+;;=> \"<div class=\\\"container\\\"><div id=\\\"left\\\"><ul><li>foo</li><li>bar</li><li>baz</li></ul></div><div id=\\\"main\\\"><p>Lorem ipsum dolor sit amet</p><p>consectetur adipiscing elit</p></div></div>\""}

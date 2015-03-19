@@ -1,0 +1,235 @@
+While Clojure provides its functionalities in multiple namespaces
+(e.g. `clojure.string`, `clojure.zip`), the majority of it 
+is defined in a single namespace called `clojure.core`.
+The first Dunaj experiment explores the idea of having multiple
+small namespaces where functions, macros and other public vars
+are grouped by their purpose. It investigates whether such separation
+is possible at all and whether it can be practical and useful.
+It will be interesting to see whether this experiment will be also
+able to lower the learning curve for beginners and improve the ease
+of use and clarity of the Clojure API.
+
+.Background
+****
+Clojure follows a single namespace design with exceptions for
+functionalities with an obvious special purpose and those specific
+to a given host (e.g. `clojure.test`, `clojure.java.io`).
+Implementation driven and historical reasons dissuade from separating
+many other special purpose or host specific functionalities.
+This design decision manifests itself in various ways:
+
+* Low level and internal functions (such as `monitor-exit`, `->VecSeq`
+  or `proxy-mappings`) are part of a public API together with widely
+  used functions such as `map`, `let` or `defn`.
+* In some cases, name clashes are solved by clever prefixes and
+  suffixes (`bit-and`, `ns-aliases`, `+'`), while for others
+  a special namespace is used
+  (`clojure.core.reducers/map`, `clojure.edn/read`).
+* Special purpose functions (e.g. for the unchecked math or for
+  bitwise logical operations) are mixed with ordinary ones.
+* Host specific stuff is mixed in a single namespace with things
+  portable across hosts.
+* Some specialized functionalities are isolated in a separate
+  namespace (e.g. `clojure.walk`, `clojure.zip`), while others are not
+  (e.g. namespace related `ns-*` vars, array creation and coercions).
+* Related functionalities are scattered in multiple namespaces
+  (e.g. string utils).
+
+Current core API is non-trivial to document, port across hosts and may
+lead to unnecessary confusions. Implementation details of a
+bootstrapping process and historical reasons currently dictate, to an
+extent, the shape and contents of the API intended for everyday use
+by application or library developers.
+****
+
+The goals of the first Dunaj experiment are as follows:
+
+* Devise a new user centric core API comprising multiple namespaces,
+  leaving bootstrapping and low level vars in the `clojure.core`.
+* Define a concept of API presets that control which
+  functions, macros and vars gets referred by default.
+* Let user choose which API preset he/she wants to use in his/hers
+  namespace, using classic `clojure.core` as a default.
+
+The upside of this approach is that backwards compatibility is
+maintained and users can freely intermix multiple APIs in their
+projects. Functionalities can be more logically separated by their
+purpose. List of automatically referred vars is no longer driven
+by the namespace in which vars were defined, but this list is handled
+by a separate API preset that can be extended and customized.
+
+== Dunaj API and SPI
+
+Dunaj takes functionalities found in `clojure.core` and in 9
+other clojure namespaces (such as `clojure.string` and
+`clojure.walk`) and divide them into more than 50 namespaces,
+grouping vars by their purpose. Moreover, distinction between
+<<api.ad#,API>> (functions, macros) and <<spi.ad#,SPI>> (protocols,
+protocol methods) has been made explicit in the documentation that
+comes with Dunaj.
+
+Example of Dunaj namespaces together with some of their vars:
+
+* `<<dunaj.boolean.api.ad#,dunaj.boolean>>` &nbsp;
+  `and`, `or`, `not`, `false?`
+* `<<dunaj.coll.api.ad#,dunaj.coll>>` &nbsp;
+  `first`, `reduce`, `get`, `conj`, `map?`
+* `<<dunaj.compare.api.ad#,dunaj.compare>>` &nbsp;
+  `identical?`, `nil?`, `compare`, `hash`
+* `<<dunaj.flow.api.ad#,dunaj.flow>>` &nbsp;
+  `if`, `let`, `loop`, `eval`, `quote`
+* `<<dunaj.function.api.ad#,dunaj.function>>` &nbsp;
+  `apply`, `defn`, `comp`, `partial`, `memoize`
+* `<<dunaj.host.api.ad#,dunaj.host>>` &nbsp;
+  `class`, `.`, `proxy`, `set!`
+* `<<dunaj.math.api.ad#,dunaj.math>>` &nbsp;
+  `+`, `==`, `min`, `inc`, `rem`
+* `<<dunaj.poly.api.ad#,dunaj.poly>>` &nbsp;
+  `deftype`, `defprotocol`, `satisfies?`, `defmulti`
+* `<<dunaj.state.api.ad#,dunaj.state>>` &nbsp;
+  `deref`, `reset!`, `realized?`
+
+.Statistics
+****
+From roughly 700 vars found in Clojure, Dunaj has:
+
+* aliased 245 vars from Clojure (e.g. `==`, `apply`, `not` or
+  `symbol`)
+* renamed 80 vars, keeping their implementation intact (e.g. `vector`
+  renamed to `->vec`, `bit-and` renamed to `and`, `ns-unmap`
+  renamed to `unmap!`)
+* enhanced the functionalities of 60 Clojure's functions/macros
+* replaced around 100 vars with a custom implementation, keeping the
+  same name
+* omitted more than 180 vars as they were deemed low level,
+  deprecated or replaced by other more generic vars (e.g. `struct`,
+  `->ArrayChunk` or `subseq`)
+****
+
+[CAUTION]
+--
+Vars named by following symbols are the only ones that a have different
+meaning in Dunaj and Clojure:
+
+* `<<dunaj.string.api.ad#str,str>>` is a one arg function taking
+  a collection of characters. `clojure.core/str` is renamed to
+  `dunaj.string/->str`
+* `<<dunaj.coll.api.ad#reverse,reverse>>` returns a reversed reducible
+  collection in faster than linear time. `clojure.core/reverse` is
+  renamed to `dunaj.coll.util/revlist`
+* `<<dunaj.coll.api.ad#reduce,reduce>>` has different semantics than
+  the Clojure's one, as it obtains the initial value from the supplied
+  reducing function, when one is not explicitly given
+* `<<dunaj.error.api.ad#error_handler,error-handler>>` and
+  `<<dunaj.error.api.ad#error_mode,error-mode>>` both return mutable
+  references to error handler and error mode, respectively
+--
+
+== API Presets
+
+API presets enable developers to elegantly switch between Dunaj and
+Clojure within the same project. `ns` macro in Clojure has been
+patched to support an additional `:api` declaration that states which
+API preset should be used in the respective namespace. Dunaj provides
+three built-in API presets:
+
+* `clojure` - Refers all vars from `clojure.core`, plus Clojure's
+  special symbols and a default set of host classes. This preset is
+  used by default when no preset is specified in the `ns` declaration.
+* `bare` - Does not refer any vars, not even special
+  symbols or host classes.
+* `dunaj` - Loads Dunaj and refers less than 600
+  <<dunaj.core.api.ad#,most commonly used>> vars from Dunaj
+  (out of more than 1700). No vars from `clojure.core` are included.
+
+Custom API presets can be easily created and used in the same way as
+the three built-in presets. Following examples shows how API presets
+are used.
+
+[source,clojure,linesnum]
+--
+;; classic Clojure API
+(ns foo.bar)
+
+(time (reduce + (take 100000 (range))))
+;; Elapsed time: 42.034772 msecs (Clojure 1.7 alpha5)
+;;=> 4999950000
+
+(def a (atom 0))
+;;=> #'foo.bar/a
+
+(add-watch a :foo (fn [r k o n] (println "state changed to" n)))
+;;=> #<Atom@3560ac26: 0>
+
+(set-validator! a even?)
+;;=> nil
+
+(swap! a inc)
+;; java.lang.IllegalStateException: Invalid reference state
+
+(swap! a #(+ 2 %))
+;; state changed to 2
+;;=> 2
+--
+
+[source,clojure,linesnum]
+--
+;; Dunaj API. Note differences in elapsed time, var names and idioms
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.concurrent.port :refer [reduce!]]))
+
+(time (reduce + (take 100000 (range))))
+;; Elapsed time: 15.84147 msecs
+;;=> 4999950000
+
+(def a (atom 0))
+;;=> #'foo.bar/a
+
+(def c (chan))
+;;=> #'foo.bar/c
+
+(tap! a c)
+;;=> #<ManyToManyChannel clojure.core.async.impl.channels.ManyToManyChannel@6203bf4d>
+
+(reduce! (fn [_ [_ o n]] (println! "state changed to" n)) nil c)
+;;=> #<ManyToManyChannel clojure.core.async.impl.channels.ManyToManyChannel@26602ed2>
+
+(reset! (validator a) even?)
+;;=> #<core$even_QMARK_ clojure.core$even_QMARK_@7ea7141a>
+
+(alter! a inc)
+;; java.lang.IllegalStateException: Invalid reference state
+
+(alter! a #(+ 2 %))
+;; state changed to 2
+;;=> 2
+--
+
+[source,clojure,linesnum]
+--
+;; Dunaj API with exclusions
+(ns foo.bar
+  (:api dunaj :exclude [+])
+  (:require [dunaj.math.precise :refer [+]]))
+
+;; + now supports arbitrary precision
+(+ 9223372036854775800 10)
+;;=> 9223372036854775810N
+--
+
+[source,clojure,linesnum]
+--
+;; Bare API, no symbols refered, not even special symbols or host classes
+(ns foo.bar
+  (:api bare))
+
+(+ 1 2)
+;; java.lang.RuntimeException: Unable to resolve symbol: + in this context
+
+(if true 1 2)
+;; java.lang.RuntimeException: Unable to resolve symbol: if in this context
+
+String
+;; java.lang.RuntimeException: Unable to resolve symbol: String in this context
+--

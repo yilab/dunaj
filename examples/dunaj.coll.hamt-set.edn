@@ -1,0 +1,36 @@
+{nil
+ ";;; CLJ format provides syntax for set literals.
+
+   {:a :b :c}
+
+   ;;; convenience functions for sets
+
+   (->set :a :b :c)
+   ;;=> #{:c :b :a}
+
+   (set [:a :b :c])
+   ;;=> #{:c :b :a}
+
+   ;;; Using empty-set
+
+   (conj empty-set :a :b :c)
+   ;;=> #{:c :b :a}
+
+   (into empty-set [:a :b :c])
+   ;;=> #{:c :b :a}
+
+   ;;; using #{} has the same effect as using empty-set
+
+   (conj #{} :a :b :c)
+   ;;=> #{:c :b :a}"
+ hamt-set-factory
+ "(ns foo.bar
+     (:api dunaj)
+     (:require [dunaj.coll :refer [->collection collection]]
+               [dunaj.coll.hamt-set :refer [hamt-set-factory]]))
+
+   (->collection hamt-set-factory :a :b :c)
+   ;;=> #{:c :b :a}
+
+   (collection hamt-set-factory [:a :b :c])
+   ;;=> #{:c :b :a}"}

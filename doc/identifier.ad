@@ -1,0 +1,139 @@
+An identifier is an object that identifies some entity. While in
+certain situations any object may serve as an identifier (e.g. keys
+in a persistent hash map), there are cases where special types of
+identifiers have to be used. Such special identifiers are called
+*symbolic identifiers* or symbolics, and their sole purpose is to
+function as identifiers.
+
+Symbolic identifiers share a following set
+of properties, implemented with respective protocols:
+
+* They have a string name and an optional string namespace.
+  A symbolic which has a non-nil namespace is called a
+  *qualified symbolic identifier*.
+* Symbolics can be invoked like functions. In such case they
+  perform a lookup in a provided data structure (first argument)
+  with an optional default value (second argument).
+* They provide a very fast value based comparison for equality.
+  Two symbolics are considered equal when they have equal names
+  and namespaces.
+
+Dunaj defines two concrete types of symbolic identifiers,
+`<<dunaj.identifier.api.ad#Symbol,Symbols>>` and
+`<<dunaj.identifier.api.ad#Keyword,Keywords>>`.
+Following table summarizes their main differences.
+
+.Differences between Symbols and Keywords
+[options="header,autowidth",format="csv",cols="<,^,^"]
+|===
+Feature,Symbols,Keywords
+EDN syntax, namespace/name or name, :namespace/name or :name
+Other syntax?, NO, special handling of ::name
+Evaluates to, other object, itself
+Are instances automatically interned?, NO, YES
+Can have metadata?, YES, NO
+|===
+
+Symbolic identifiers implement
+`<<dunaj.string.spi.ad#ICanonical,ICanonical>>` protocol and
+`<<dunaj.string.api.ad#canonical,canonical>>` function can be used
+to retrieve a canonical representation of a Symbol or Keyword.
+Constructors for symbolic identifier accept such canonical string too.
+
+[source,clojure,linesnum]
+--
+(canonical 'foo/bar)
+;;=> "foo/bar"
+
+(canonical :baz)
+;;=> ":baz"
+
+(keyword ":baz")
+;;=> :baz
+
+(symbol "foo/bar")
+;;=> foo/bar
+--
+
+Symbols and Keywords implement natural total ordering and can be
+compared with `<<dunaj.compare.api.ad#compare,compare>>`.
+Symbols can have metadata attached, but Keywords cannot.
+Keywords are always interned, and as such can be compared with
+`<<dunaj.compare.api.ad#identical{under}QMARK{under},identical?>>`.
+Symbolic identifiers can be invoked just like normal functions.
+
+* `(:keyword m)` is the same as `(get m :keyword)`
+* `(:keyword m :not-found)` is the same as
+  `(get m :keyword :not-found)`
+* `('symbol m :not-found)` is the same as `(get m 'symbol :not-found)`
+** do not confuse `('symbol m)` with `(symbol m)`, later is not symbol
+  invocation but a function call because of special evaluation rules
+  for lists
+
+== Syntax
+
+`CLJ` provides dedicated syntax for symbolic identifiers. Following
+table summarizes its details.
+
+[options="header,autowidth",cols="<,^,^"]
+|===
+| | EDN | CLJ
+
+| symbols | YES | YES
+
+| symbol start character | alphabetic, `+` `-` `.` followed by non-numeric symbol character, `*` `!` `_` `?` `$` `%` `&` `=` `<` `>` (`/` is special, see below) | alphabetic, `+` `-` `*` `!` `_` `?` (`/` and `.` are special, see below), ( icon:warning[role="yellow"] specs does not mention `$` `=` `<` `>` `%` `&`)
+
+| symbol character | alphanumeric, `+` `-` `.` `*` `!` `_` `?` `$` `%` `&` `=` `<` `>` `:` `#` | alphanumeric,  `+` `-` `*` `!` `_` `?` (`.` `/` and `:` are special, see below), ( icon:warning[role="yellow"] specs does not mention `$` `=` `<` `>` `%` `&` `#` `'`)
+
+| special symbol character | `/`, used alone or in following combinations `foo/bar` (`foo//` combination is https://github.com/edn-format/edn/issues/51[questionable]). First character after slash must follow rule for symbol start character | `/`, used alone or in following combinations `foo/bar` `foo//` (icon:warning[role="yellow"] latter combination is undocumented). `.`, used as prefix or suffix is reserved to Clojure, used inside symbol divides namespace or package names. `:` can be used inside symbol, used as suffix is reserved to Clojure (currently it produces an error). (icon:warning[role="yellow"] undocumented restrictions: symbol can not contain `::`, namespace part can not end with `:`,  first character after slash must follow rule for symbol start character)
+
+| keyword | prefixed with `:` | prefixed with `:`
+
+| keyword character | alphanumeric, `+` `-` `.` `*` `!` `_` `?` `$` `%` `&` `=` `<` `>` `:` `#` | alphanumeric,  `+` `-` `*` `!` `_` `?` (`.` `/` and `:` are special, see below), ( icon:warning[role="yellow"] specs does not mention `$` `=` `<` `>` `%` `&` `#` `'`)
+
+| keyword invalid second character | `:` | none special
+
+| special keyword character  | `/`, used in following combinations `:foo//` `:foo/bar`. First character after slash must follow rule for symbol start character | `/`, used in following combinations `:foo/bar` `:foo//` (icon:warning[role="yellow"] latter combination is undocumented). `:` used as second character resolves keyword in the current namespace, used as suffix is reserved to Clojure (currently it produces an error). (icon:warning[role="yellow"] undocumented restrictions: keyword can not contain `::` other than as a prefix, namespace part can not end with `:`,  first character after slash must follow rule for symbol start character) Specs also say that keywords cannot contain '.' ( icon:warning[role="yellow"] restriction meant probably only for the name part of the keyword) or name classes.
+|===
+
+== Names and Namespaces
+
+Two protocols are closely related to identifiers. They are
+called
+`<<dunaj.identifier.spi.ad#INamed,INamed>>` and
+`<<dunaj.identifier.spi.ad#INamespaced,INamespaced>>` and they define
+name and namespace strings.
+
+The object's name is a string and can be obtained with the
+`<<dunaj.identifier.api.ad#name,name>>` function. If object supports
+`INamed`, its name must not be `nil`.
+The object's namespace is also a string and can also be `nil`.
+It is obtained with the
+`<<dunaj.identifier.api.ad#namespace,namespace>>` function.
+Following types support `INamed` and `INamespaced` protocol:
+
+* Symbolic identifiers (Symbol, Keyword)
+* Vars
+
+Following types support only `INamed` protocol:
+
+* Strings (including string sections, reversed strings)
+* Exceptions
+
+[source,clojure,linesnum]
+--
+(name :bar)
+;;=> "bar"
+
+(namespace :bar)
+;;=> nil
+
+(name :foo/bar)
+;;=> "bar"
+
+(namespace :foo/bar)
+;;=> "foo"
+
+(name #'clojure.core/reduce)
+;;=> "reduce"
+--

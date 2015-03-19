@@ -1,0 +1,9 @@
+2015/03/20 ::
+Dunaj v0.3.7 has been released
++
+This release is not stable, is based on Clojure 1.7.0 SNAPSHOT and
+some changes in the API are expected.
+
+++++
+<div id="blo"></div>
+++++

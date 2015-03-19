@@ -1,0 +1,73 @@
+You can start using Dunaj just like any other Clojure library,
+but with a small exception. As Dunaj is a fork of Clojure,
+you must exclude original Clojure from your dependency tree.
+
+Dunaj tries hard to be backwards compatible with existing Clojure
+libraries. As Dunaj introduces qualified special symbols, some
+problems may arise in libraries that perform code analysis or eval
+code in other namespaces.
+
+IMPORTANT: Dunaj requires Oracle JDK 8. Also note that so far Dunaj
+has only been tested under Linux.
+
+== Using Leiningen
+
+To start using Dunaj, include following dependency in your leiningen project:
+
+`*[org.dunaj/dunaj "{current-version}"]*`
+
+Use leiningen's `:exclusions` to exclude any Clojure dependency:
+
+`[com.example/foo "1.2.3" :exclusions [org.clojure/clojure]]`
+
+[NOTE]
+You can also start using Dunaj with a
+https://github.com/dunaj-project/dunaj-starter[dunaj-starter]
+leiningen project. Clone starter repository with
+`git clone https://github.com/dunaj-project/dunaj-starter.git`
+
+=== REPL
+
+After starting REPL (e.g. with `lein repl`), eval `(dunaj!)` form
+to start working with Dunaj:
+
+[source,clojure,linesnum]
+--
+user=> (dunaj!)
+#object[clojure.lang.Namespace 0x2fe126bf "dunaj.user"]
+dunaj.user=> (println! (str (print json [1 2 3] {:a "foo"})))
+[1,2,3] {"a":"foo"}
+nil
+--
+
+=== Use in sources
+
+To use Dunaj in your sources, use `:api` ns declaration:
+
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj))
+
+(defn bar :- String
+  [s :- String]
+  (str (print "Hello %s!" s)))
+
+(defn foo :- nil
+  [s :- String]
+  (println! (bar s))
+  nil)
+
+(foo "World")
+--
+
+== Standalone REPL
+
+Other method to start Dunaj REPL is to use a standalone .jar file.
+
+. Download link:release/dunaj-latest.jar[latest standalone binary]
+. Start with `java -cp dunaj-latest.jar dunaj.main`
+
+NOTE: Alternatively, you can start a clojure REPL with
+`java -cp dunaj-latest.jar clojure.main` and then use
+`(dunaj!)` to switch to Dunaj.

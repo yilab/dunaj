@@ -1,0 +1,236 @@
+With core API splitted into separate namespaces and with protocols
+being used to specify core abstractions, Dunaj further simplifies its
+API by providing and adhering to additional idioms, conventions and
+best practices. Moreover, Dunaj changes how compiler recognizes
+special symbols, and makes them fully qualified.
+
+== Fully qualified special symbols
+
+Clojure defines a handful of special symbols like `if`, `loop`,
+`recur` or `try`. Unfortunatelly, special symbols are not qualified
+and it is very hard to shadow them with custom implementation when
+needed, as special symbols override any referred vars
+(such need is justified in several libraries, e.g. core.typed or
+synthread). Dunaj makes all special symbols qualified and puts them
+in the `clojure.core` namespace, subject to standard refer rules.
+Dunaj's API does not contain any special symbols (`if`, `loop`
+and other special symbols are in Dunaj defined as macros).
+
+[source,clojure,linesnum]
+--
+(ns foo.bar)
+
+#'if
+;;=> java.lang.RuntimeException: Unable to resolve var: if in this context
+--
+
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj))
+
+#'if
+;;=> #'dunaj.flow/if
+
+(dunaj.macro/macro? #'if)
+;;=> true
+
+(macroexpand '(if test then else))
+;;=> (clojure.core/if test then else)
+--
+
+NOTE: Dunaj is implemented in a way that allows a default `clojure`
+API preset to keep supporting unqualified special symbols just like
+in Clojure.
+
+== Generalized API
+
+Several language features originally provided by multiple functions
+were generalized and replaced with more general ones.
+Following list describes most important changes:
+
+* `<<dunaj.coll.api.ad#section,section>>` for subsequences that share
+  underlying data with original ones,
+  `<<dunaj.coll.api.ad#slice,slice>>` for subsequences that do not
+  share any data (generalization of `clojure.core/subvec` and
+  `clojure.core/subs`).
+* `<<dunaj.coll.api.ad#flip,flip>>` and
+  `<<dunaj.coll.api.ad#reverse,reverse>>` for reversing collections.
+  (`clojure.core/reverse` was renamed to `revlist`)
+* `<<dunaj.coll.api.ad#capacity,capacity>>` and
+  `<<dunaj.coll.api.ad#full?,full?>>` for capped collections.
+  (supported e.g. for channel buffers)
+* `<<dunaj.identifier.api.ad#name,name>>` and
+  `<<dunaj.identifier.api.ad#namespace,namespace>>` for objects
+  having string name/namespace.
+  `<<dunaj.string.api.ad#canonical,canonical>>` for objects that have
+  a canonical string representation.
+* `<<dunaj.math.api.ad#num,num>>` for objects other than
+  numbers which however have a canonical numerical representation.
+  (`clojure.core/num` was renamed to `dunaj.host.number/number`)
+* `<<dunaj.state.api.ad#reset!,reset!>>` and
+  `<<dunaj.state.api.ad#cas!,cas!>>` (compare and set) works with
+  multiple reference types.
+* ref facilities were made extensible through
+  `<<dunaj.state.ref.spi.ad#IRef,IRef>>` protocol, to support e.g.
+  https://github.com/cgrand/megaref[megarefs].
+* String has better integration with core abstractions. String
+  sections, slices, reversed and transient strings are provided.
+* `<<dunaj.coll.util.api.ad#sort,sort>>`,
+  `<<dunaj.coll.util.api.ad#sort_by,sort-by>>` and
+  `<<dunaj.coll.util.api.ad#shuffle,shuffle>>` all return a collection
+  instead of a host array.
+
+By providing such generalized predicates and functions, Dunaj was
+able to support more functionalities for transformed collections.
+For example, reversed vectors (both primitive and ordinary) are now
+sectionable and counted, Vars are named, instants and regexes
+have a canonical string representation and it is now trivial to add
+fold support for a collection that is sectionable.
+
+== Unified def-like syntax
+
+Dunaj unifies syntax for all def-like macros. The `def`, `defn`,
+`defmacro`, `deftype`, `defrecord` and `defprotocol` now all accept
+optional type signature (not for `defmacro`), docstring and metadata
+map. Following example demonstrates the new syntax:
+
+[source,clojure,linesnum]
+--
+(def ^:const foo :- Integer
+  "A magic integer."
+  {:added "1.0"
+   :see '[foo-fn foo-macro]}
+  42)
+--
+
+[source,clojure,linesnum]
+--
+(defn ^:private foo-fn :- Integer
+  "Returns a magic integer plus x."
+  {:added "1.0"
+   :see '[foo foo-macro]}
+  [x :- Number]
+  (+ x 42))
+--
+
+[source,clojure,linesnum]
+--
+;; macros do not support type signatures
+(defmacro ^:some-metadata foo-macro
+  "A nonsense macro."
+  {:added "1.0"
+   :see '[foo foo-fn]}
+  [body]
+  `(+ ~@body 42))
+--
+
+[source,clojure,linesnum]
+--
+(defprotocol ^:can-put-metadata-here IFoo
+  "A protocol for foo stuff."
+  {:added "1.0"
+   :predicate 'fooable?}
+  IFoo
+  (-foo! :- Number
+    "Sets y to new-y and returns (+ x new-y)"
+    [this new-y]))
+--
+
+[source,clojure,linesnum]
+--
+(deftype ^:bar-meta Foo
+  "A Foo type."
+  {:added "1.0"
+   :predicate 'foo?}
+  [x :- Integer, ^:unsynchronized-mutable y :- Number]
+  IFoo
+  (-foo! [this new-y]
+    (set! y new-y)
+    (+ x y)))
+--
+
+== API
+
+A namespace consists of a set of named Vars that refer to other
+objects. API is defined as a set of namespaces, with one entry point
+namespace (which name usually ends with `core`).
+Strict rules were applied to the contents of Dunaj's public API. The
+API as provided by Dunaj will only contain non-dynamic Vars that hold
+functions, macros, deftype maps, constants, default objects, type
+signatures or dynamic vars. Dunaj's policy is to discourage
+the use of following types of objects in the API:
+
+* No special forms. They are an implementation detail and should be
+  hidden behind a macro.
+* No dynamic Vars, as they cannot be aliased or extended.
+* No host classes or interfaces.
+* No generated deftypes constructors (both positional and named)
+* Protocols and protocol methods are considered a part of SPI
+  (and documented as such), even if defined together with
+  API functions or macros in the same namespace.
+
+Dynamic vars are handled like other reference types such as atoms or
+refs. Dunaj's approach is to define vars that will hold a dynamic var
+of your choice. Just as you wouldn't put an atom itself in a
+namespace (it's also impossible as namespace can only contain
+Vars), dynamic Vars have no place in the API.
+
+.An idiomatic way to put dynamic Vars into API
+[source,clojure,linesnum]
+--
+(def ^:dynamic ^:private *default-send-executor* :- IExecutor
+  clojure.lang.Agent/pooledExecutor)
+
+(def default-send-executor :- Var
+  "A dynamic var holding default send executor."
+  (var *default-send-executor*))
+--
+
+== Naming Conventions
+
+Dunaj has specific naming conventions, which it tries to
+consistently follow.
+
+* function/macro/var names are hyphen-cased. Verbs are usually used
+  for macros and functions, with nouns used for other vars and for
+  constructor functions.
+* Deftypes and protocols are camel-cased, with protocol names being
+  prefixed with capital letter `I`.
+* Overly long names (like `unsynchronized-reference`) denote
+  functions that are less often needed, or they represent a very
+  specific functionality that requires an experienced programmer.
+* Name enclosed in asterisks is used for private dynamic Vars.
+
+[cols="a,a"]
+|===
+
+| [big]*Prefixes*
+
+Functions with same prefixes usually provide a similar kind of
+functionality.
+
+* `-` names a protocol method
+* `default-*` holds a dynamic var
+* `empty-*` holds an empty object of a specific type
+* `ensure-*` throws if a specific requirement is not met
+* `provide-*` returns its argument, adjusted if needed (casting,
+  enlarging, etc.)
+* `pass:[->]*` names a positional constructor
+* `with-*` names a macro that takes an optional map as its first
+  argument
+* `def*` names a macro that interns a var in a namespace. Such
+  macros should only be used as top level forms.
+
+| [big]*Suffixes*
+
+Functions with suffixes often have a variant without one that
+is related to the former function.
+
+* `!` names a function with side effects, which is usually not
+  safe (or possible) to call within a ref transaction
+* `?` names a predicate function that returns a boolean value
+* `*` names a supplementary function
+* `-factory` names a factory var
+
+|===

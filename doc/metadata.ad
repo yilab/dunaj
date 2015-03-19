@@ -1,0 +1,85 @@
+Dunaj recognizes following metadata:
+
+* `:doc` - docstring (manual/def et al.)
+* `:added` - clojure version in which the var was added (manual)
+* `:tsig` - type signature (manual/generated from defX sugared syntax)
+* `:indent` - IDE indent hint (manual)
+* `:indent-group` - IDE indent grouping hint (manual)
+* `:highlight` - IDE highlight categories (manual)
+* `:named` - IDE hint which indicates macro/function which takes name
+  as first argument (manual)
+* `:let-bindings` - IDE hint which indicates macro/function takes
+  let-like bindings argument (manual)
+* `:fn-params` - IDE hint which indicates macro/function takes
+  fn-like params argument (manual)
+* `:predicate` - predicate name for a given type or protocol
+  (manual/deftype/defprotocol)
+* `:tag` - type hint (manual)
+* `:arglists` - argument list (manual/defn)
+* `:private` - var is no part of public API (manual)
+* `:macro` - flags var as a macro (manual/defmacro)
+* `:const` - constant, skips checking root and thread bindings
+  (manual)
+* `:dynamic` - var can have thread binding (manual)
+* `:declared` - declared but not defed var, no effect, just for docs?
+  (manual/declare)
+* `:inline` - inline for compiler (manual/definline)
+* `:inline-arities` - fn, which arities to inline (manual)
+* `:test` - noarg fn to be called when testing
+  (manual/deftest/with-test)
+* `:ns` - namespace (automatic)
+* `:name` - var name (automatic)
+* `:column` - column in source (automatic)
+* `:line` - line number in source (automatic)
+* `:file` - source file name (automatic)
+* `:static` - in genclass to denote static method
+  (manual in gen-class)
+* `:once` - denotes functions that can release closure after being
+  called once? Used in lazy seqs and TCO loops (manual/expert only)
+* `:unsynchronized-mutable` - mutable deftype fields, with set!
+  (manual/expert only)
+* `:volatile-mutable` - mutable deftype fields, with set!
+  (manual/expert only)
+
+
+== Indentation
+
+[source,clojure,linesnum]
+--
+;; indent nil (default)
+(foo
+ 1 2
+ 3)
+
+(foo 1
+     3)
+
+;; indent 0
+(do
+  1)
+
+(do 1
+    3)
+
+;; indent 1
+(if 1
+  2)
+
+(if 1 2
+    3)
+
+;; indent 2
+(condp 1 2
+  3)
+
+(condp 1 2 3
+       4)
+
+;; indent :all
+(defn 1 2 3 4 5 6 7
+  3)
+
+(defn
+  1 2
+  3)
+--

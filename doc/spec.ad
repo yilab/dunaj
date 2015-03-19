@@ -1,0 +1,30 @@
+Specification describes Dunaj functionalities with focus
+on the differences from Clojure, and defines idioms and best
+practices.
+
+WARNING: Specification is in a very early draft stage and is largely
+unfinished
+
+See also (currently outdated)
+https://docs.google.com/spreadsheets/d/1J8ndX6C1fuXGdIeekOWsmiqS2tmVb_OMZRKs3SphGPA/pubhtml[Summary tables for Dunaj API],
+which include comparison table between Clojure and Dunaj API.
+
+Following topics are discussed:
+
+* <<boolean.ad#,Booleans>>
+* <<math.ad#,Math>>
+* <<char.ad#,Characters>>
+* <<string.ad#,Strings>>
+* <<identifier.ad#,Identifiers>>
+* <<function.ad#,Functions>>
+* <<compare.ad#,Comparison>>
+* <<concurrent.ad#,Concurrency>>
+* <<reference.ad#,References>>
+* <<conventions.ad#,Conventions>>
+* <<resources.ad#,Resources>>
+* <<metadata.ad#,Metadata>>
+* <<types.ad#,Data types>>
+
+++++
+<div id="blo"></div>
+++++

@@ -1,0 +1,36 @@
+internal stuff
+
+ITERNAL TODO:
+* review coll/* namespaces
+* clone support/forbid for collections
+** clone for promise
+* unify otherwise clause in docstrings
+
+== Update dependencies:
+
+* git checkout master, git pull parent master
+* git checkout dunaj, git merge master
+* in project.clj, bump version
+* lein jar, lein deploy clojars (lein install)
+
+in that order:
+
+* clojure
+* tools.analyzer
+* tools.analyzer.jvm
+* core.async
+* core.rrb-vector
+* synthread
+
+== New version release:
+
+* bump number in project.clj
+* bump number in clojure/bootstrap.clj
+* bump dependency in dunaj-starter
+
+== Dunaj deploy:
+
+* lein uberjar, copy to release/dunaj-latest.jar
+* lein deploy clojars
+* generate documentation
+** upload to https://github.com/dunaj-project/dunaj-project.github.io

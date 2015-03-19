@@ -1,0 +1,172 @@
+{bare-udp
+ ["(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource.udp :refer [bare-udp datagram]]
+            [dunaj.concurrent.thread :refer [sleep]]
+            [dunaj.repl :refer [pst]]))
+
+;; UDP broadcast
+(with-io-scope
+  (let [r (acquire! (bare-udp nil
+                              :local-port 43214
+                              :broadcast? true
+                              :batch-size 100))]
+    (println! (config r))
+    
+    (future
+      (println! \"monitor enter\")
+      (io!
+       (try
+         (vec (map #(println! \"received \" %) (read! r)))
+         (catch java.nio.channels.AsynchronousCloseException e
+           (println! \"monitor exit\"))
+         (catch java.lang.Exception e
+           (println! \"exception in monitor \" (pst e))))))
+    
+    (write! r [(datagram \"192.168.1.255\" 43214 [1 2 3 4 5 6])])
+    
+    (sleep 1000)))
+;; {:uri #uri \"bare-udp://0.0.0.0:43214?bs=100&broadcast=true\" :protocol-family :inet :local-address nil :local-port 43214 :batch-size 100 :reuse? nil :broadcast? true :tos nil :in-buffer-size nil :out-buffer-size nil :multicast-if nil :multicast-ttl nil :multicast-loop true :payload-fn #<udp$payload__GT_array_coll dunaj.resource.udp$payload__GT_array_coll@406bf9b6> :selector-provider #<EPollSelectorProvider sun.nio.ch.EPollSelectorProvider@421c10c> :non-blocking? false}
+;; monitor enter
+;; received  {:address 192.168.1.101 :port 43214 :payload (1 2 3 4 5 6)}
+;; monitor exit
+;;=> nil"
+   "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource.udp :refer [bare-udp datagram]]
+            [dunaj.concurrent.thread :refer [sleep]]
+            [dunaj.repl :refer [pst]]))
+
+;; non-blocking UDP broadcast
+(with-io-scope
+  (let [r (acquire! (bare-udp nil
+                              :local-port 43214
+                              :broadcast? true
+                              :non-blocking? true
+                              :batch-size 100))]
+    (println! (config r))
+    
+    (thread
+     (io! (let [x (read! r)
+                ir (atom [])]
+            (loop [r (reduce #(do (alter! ir conj %2)
+                                  (inc %)) 0 x)]
+                (cond (postponed? r)
+                      (do (println! \"got postponed\" @r @ir)
+                          (reset! ir [])
+                          (sleep 500) ;; better to use selector here
+                          (recur (unsafe-advance! r)))
+                      :else
+                      (println! \"got final\" r @ir))))))
+    
+    (write! r [(datagram \"192.168.1.255\" 43214 [0 1 2])])
+    (write! r [(datagram \"192.168.1.255\" 43214 [3 4 5])])
+    (sleep 1000)
+    (write! r [(datagram \"192.168.1.255\" 43214 [6 7 8 9 10])])
+    
+    (sleep 2000)))
+;; {:uri #uri \"bare-udp://0.0.0.0:43214?bs=100&nb=true&broadcast=true\" :protocol-family :inet :local-address nil :local-port 43214 :batch-size 100 :reuse? nil :broadcast? true :tos nil :in-buffer-size nil :out-buffer-size nil :multicast-if nil :multicast-ttl nil :multicast-loop true :payload-fn #<udp$payload__GT_array_coll dunaj.resource.udp$payload__GT_array_coll@406bf9b6> :selector-provider #<EPollSelectorProvider sun.nio.ch.EPollSelectorProvider@421c10c> :non-blocking? true}
+;; got postponed  2 [{:address 192.168.1.101 :port 43214 :payload (0 1 2)} {:address 192.168.1.101 :port 43214 :payload (3 4 5)}]
+;; got postponed  2 []
+;; got postponed  3 [{:address 192.168.1.101 :port 43214 :payload (6 7 8 9 10)}]
+;; got postponed  3 []
+;; got postponed  3 []
+;; got postponed  3 []
+;; got final  3 []
+;;=> nil"]
+ udp
+ "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource.udp :refer [udp]]
+            [dunaj.concurrent.thread :refer [sleep]]
+            [dunaj.repl :refer [pst]]))
+
+(with-io-scope
+  (let [r (acquire! (udp nil
+                         :local-port 43214
+                         :remote-port 43214
+                         :remote-address \"localhost\"))]
+    (println! (config r))
+    (future
+      (io!
+       (try
+         (dored [x (read! r)] (println! \"received\" x))
+         (catch java.nio.channels.AsynchronousCloseException e
+           (println! \"monitor exit\"))
+         (catch java.lang.Exception e
+           (println!
+            \"exception in monitor \" (pst e))))))
+    
+    (write! r [[-1 -2 -3 -4]])
+    (write! r [[1 2 3 4 5]])
+    
+    (sleep 200)))
+;; {:uri #uri \"udp://0.0.0.0:43214@localhost:43214\" :protocol-family :inet :remote-address localhost :remote-port 43214 :local-address nil :local-port 43214 :batch-size nil :reuse? nil :broadcast? false :tos nil :in-buffer-size nil :out-buffer-size nil :multicast-if nil :multicast-ttl nil :multicast-loop true :payload-fn #<udp$payload__GT_array_coll dunaj.resource.udp$payload__GT_array_coll@406bf9b6> :selector-provider #<EPollSelectorProvider sun.nio.ch.EPollSelectorProvider@421c10c> :non-blocking? false}
+;; received (-1 -2 -3 -4)
+;; received (1 2 3 4 5)
+;; monitor exit
+;;=> nil"
+ multicast
+ ["(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource.udp :refer [multicast]]
+            [dunaj.concurrent.thread :refer [sleep]]
+            [dunaj.repl :refer [pst]]))
+
+(with-io-scope
+  (let [r (acquire! (multicast nil
+                               :local-port 43214
+                               :multicast-group \"224.0.0.104\"
+                               :network-interface
+                               (java.net.NetworkInterface/getByName \"eth0\")))]
+    (println! (config r))
+    (future
+      (println! \"monitor enter\")
+      (io!
+       (try
+         (dored [x (read! r)] (println! \"received\" x))
+         (catch java.nio.channels.AsynchronousCloseException e
+           (println! \"monitor exit\"))
+         (catch java.lang.Exception e
+           (println! \"exception in monitor \" (pst e))))))
+    
+    (write! r [[-1 -2 -3 -4]])
+    (write! r [(datagram \"224.0.0.104\" 43214 [1 2 3 4 5])])
+
+    (sleep 200)))
+;; {:uri #uri \"multicast://eth0:43214@224.0.0.104\" :protocol-family :inet :multicast-group 224.0.0.104 :sources [] :network-interface #<NetworkInterface name:eth0 (eth0)> :local-port 43214 :batch-size nil :tos nil :in-buffer-size nil :out-buffer-size nil :multicast-if nil :multicast-ttl nil :multicast-loop true :payload-fn #<udp$payload__GT_array_coll dunaj.resource.udp$payload__GT_array_coll@406bf9b6> :selector-provider #<EPollSelectorProvider sun.nio.ch.EPollSelectorProvider@421c10c> :non-blocking? false}
+;; monitor enter
+;; received {:address 192.168.1.101 :port 43214 :payload (-1 -2 -3 -4)}
+;; received {:address 192.168.1.101 :port 43214 :payload (1 2 3 4 5)}
+;; monitor exit
+;;=> nil"
+  "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.concurrent.thread :refer [sleep]]))
+
+(with-io-scope
+  (let [factory (resource \"multicast://eth0:43214@224.0.0.104\")
+        r (acquire! (assoc factory :non-blocking? true))
+        sel (acquire! (selector))
+        prf #(reduce conj [] (read! (:resource %)))
+        rf #(println! \"got\" %2 \"\\ndatagrams\" @(prf %2))]
+    (register! sel r [:read])
+    (thread (io! (loop [x (reduce rf nil (read! sel))]
+                   (if (postponed? x)
+                     (do (println! \"ready\" (select sel))
+                         (recur (unsafe-advance! x)))
+                     (println! \"end\")))))
+   
+    (write! r [[1 2 3] [4 5 6]])
+    (sleep 100)
+    (write! r [[7 8 9]])
+    (sleep 500)))
+;; ready 1
+;; got {:ready (:read) :resource #<MulticastResource dunaj.resource.udp.MulticastResource@7c560cb5>} 
+;; datagrams [{:address 192.168.1.101 :port 43214 :payload (1 2 3)} {:address 192.168.1.101 :port 43214 :payload (4 5 6)}]
+;; ready 1
+;; got {:ready (:read) :resource #<MulticastResource dunaj.resource.udp.MulticastResource@7c560cb5>} 
+;; datagrams [{:address 192.168.1.101 :port 43214 :payload (7 8 9)}]
+;; ready 0
+;; end
+;;=>nil"]}

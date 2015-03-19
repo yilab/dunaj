@@ -1,0 +1,85 @@
+{secure
+ ["(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.concurrent.thread :refer [sleep]]
+            [dunaj.resource.tcp :refer [tcp finish-connect!]]
+            [dunaj.resource.selector :refer [selector register!]]
+            [dunaj.resource.secure :refer [secure]]))
+
+;; non-blocking
+(with-io-scope
+  (let [uri \"tcp://gotofail.com:443\"
+        c (acquire! (tcp uri :non-blocking? true))
+        s (acquire! (secure c))
+        gm \"GET / HTTP/1.0\\r\\nFrom: example@example.com\\r\\nUser-Agent: Mozilla/5.0 Gecko/20100101 Firefox/36.0\\r\\n\\r\\n\"
+        sel (acquire! (selector))]
+    (register! sel c [:connect])
+    (select sel)
+    (finish-connect! c)
+    (pass! s nil)
+    (println! \"writing\" (write! s (print utf-8 gm)))
+    (register! sel c [:read])
+    (thread
+     (io!
+      (try
+        (let [rf #(println! \"got\" (str (take 350 (parse utf-8 %2))))]
+          (loop [r (reduce-batched nil nil rf nil (read! s))]
+            (println! \".\")
+            (when (postponed? r)
+              (select sel 500)
+              (recur (unsafe-advance! r))))
+          (println! \"EOF\"))
+        (catch java.lang.Exception e (println! \"R exception:\" e)))))
+    (sleep 5000)))
+;; writing #<Postponed@16c42c7c: 98>
+;; .
+;; .
+;; .
+;; .
+;; .
+;; .
+;; .
+;; .
+;; .
+;; got back HTTP/1.1 200 OK
+;; Server: nginx/1.4.6 (Ubuntu)
+;; Date: Mon, 08 Dec 2014 21:39:51 GMT
+;; Content-Type: text/html
+;; Content-Length: 8618
+;; Last-Modified: Mon, 20 Oct 2014 20:06:13 GMT
+;; Connection: close
+;; ETag: \"54456b35-21ab\"
+;; Accept-Ranges: bytes
+;;
+;; <!DOCTYPE html>
+;; <html><head><meta charset=utf-8><title>goto fail;</title>
+;; <link rel=\"icon\" href=\"data:\";base
+;; .
+;; EOF
+;;=> nil"
+  ";; blocking
+(with-io-scope
+  (let [s (acquire! (resource \"tcps://gotofail.com:443/\"
+                              :ignore-missing-close? true
+                              :non-blocking? false))
+        gm \"GET / HTTP/1.0\\r\\nFrom: example@example.com\\r\\nUser-Agent: Mozilla/5.0 Gecko/20100101 Firefox/36.0\\r\\n\\r\\n\"]
+    (println! \"writing\" (write! s (print utf-8 gm)))
+    (let [rf #(println! \"got\" (str (take 350 (parse utf-8 %2))))]
+      (reduce-batched nil nil rf nil (read! s))
+      (println! \"EOF\"))))
+;; writing 98
+;; got HTTP/1.1 200 OK
+;; Server: nginx/1.4.6 (Ubuntu)
+;; Date: Mon, 08 Dec 2014 22:03:09 GMT
+;; Content-Type: text/html
+;; Content-Length: 8618
+;; Last-Modified: Mon, 20 Oct 2014 20:06:13 GMT
+;; Connection: close
+;; ETag: \"54456b35-21ab\"
+;; Accept-Ranges: bytes
+;; 
+;; <!DOCTYPE html>
+;; <html><head><meta charset=utf-8><title>goto fail;</title>
+;; <link rel=\"icon\" href=\"data:;base
+;; EOF
+;;=> nil"]}

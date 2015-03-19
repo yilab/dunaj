@@ -1,0 +1,10 @@
+{nil
+ "(ns foo.bar
+     (:api dunaj)
+     (:require [dunaj.bit :as bit]))
+
+   (def ALL_OPTS
+     (bit/or java.nio.channels.SelectionKey/OP_READ
+             java.nio.channels.SelectionKey/OP_WRITE
+             java.nio.channels.SelectionKey/OP_ACCEPT
+             java.nio.channels.SelectionKey/OP_CONNECT))"}

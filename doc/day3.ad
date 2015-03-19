@@ -1,0 +1,292 @@
+One of Dunaj's objectives is to facilitate host independent style of
+programming. The third Dunaj experiment aims to transform core API
+into one that uses protocols for all of its abstractions.
+Additionally, Dunaj introduces a concept of a factory protocol that
+represents an abstraction of a constructor for an abstract data type.
+Protocols and protocol methods are part of the Dunaj's interface that
+is oriented towards implementers of custom types and language
+extensions and they are documented separatedly in the <<spi.ad#,SPI>>
+part of Dunaj's documentation.
+
+.Background
+****
+Clojure's exceptional interop support enables a straightforward
+use of host interfaces from Clojure code. As they are not a perfect
+fit for Clojure's purposes, a concept of
+http://clojure.org/protocols[protocols] was introduced in Clojure 1.2.
+Protocols came fairly late with regards to the state of API formation.
+Existing implementations of Clojure's core abstractions were already
+well grounded in host interfaces and there was no pressing need or
+justification for their reimplementation in terms of protocols.
+
+Clojure's implementation contains several workarounds for the
+manifestation of the
+http://en.wikipedia.org/wiki/Expression_problem[expression problem]
+in the core API. Special cases are introduced e.g. for Strings and
+host collection types so that they can be used interchangeably with
+Clojure's built-in persistent collections (e.g. for `nth`, `seq` or
+`count`). However the expression problem keeps popping up in various
+places and causes unnecessary complexities in the API
+(e.g. `(counted? "foo")` returning `false`, inconsistent hashing
+described in http://dev.clojure.org/jira/browse/CLJ-1372[CLJ-1372])
+
+With the coming of ClojureScript, it has been tried and successfully
+shown that protocols can also be an appropriate representation for
+core language abstractions.
+With protocols, abstractions can be expressed in a clear and natural
+way, can be ported across hosts and provide new ways to mitigate the
+expression problem.
+****
+
+Goals of the third Dunaj experiment are as follows:
+
+* Provide protocols for all existing built-in abstractions that were
+  in Clojure specified by host interfaces.
+* Modify existing core functionalities to build upon protocols instead
+  of specific types, host classes or interfaces.
+* Introduce a separate representation of deftypes, treating
+  the underlying host class as an implementation detail not
+  automatically imported into the current namespace.
+* Introduce a new idiom of factory protocols, which are used to
+  represent an abstraction of a constructor for an abstract data type.
+
+Dunaj defines more than 120 built-in protocols. The performance of
+`satisfies?` was significantly improved. A syntax for protocol methods
+was changed to be more in line with def-like syntax
+(see Syntax section below).
+The creation of a protocol predicate was simplified by using
+`:predicate` metadata key to automatically generate a respective
+protocol predicate:
+
+.Definition of a protocol and its predicate
+[source,clojure,linesnum]
+--
+(defprotocol IMutable
+  "A state protocol for mutable references."
+  {:predicate 'mutable?}
+  (-reset! :- Any
+    "Resets the referenced value to val.
+    Returns new value. Mutates this."
+    [this val :- Any]))
+--
+
+[NOTE]
+--
+Dunaj tries not to reimplement existing functionality and thus can be
+more backwards compatible. `defprotocol` internal implementation was
+in Dunaj patched to support existing interfaces (or their parts) as
+protocol's host implementations. That way implementing for example
+Dunaj's `<<dunaj.coll.spi.ad#ICounted,ICounted>>` protocol leads to
+the exact same code as implementing `clojure.lang.Counted` interface.
+The capability of `defprotocol` to 'parasite' on a host interface is
+however an internal extension and is not documented or even encouraged
+to use from user-defined protocols.
+--
+
+Protocols in Dunaj are provided for all kinds of abstractions:
+
+* values -
+  `<<dunaj.math.spi.ad#INumerical,INumerical>>`,
+  `<<dunaj.compare.spi.ad#IHash,IHash>>`,
+  `<<dunaj.string.spi.ad#ICanonical,ICanonical>>`,
+  `<<dunaj.identifier.spi.ad#INamed,INamed>>`, ...
+* collections - `<<dunaj.coll.spi.ad#ISeqable,ISeqable>>`,
+  `<<dunaj.coll.spi.ad#IIndexed,IIndexed>>`,
+  `<<dunaj.coll.spi.ad#ISectionable,ISectionable>>`,
+  `<<dunaj.coll.spi.ad#IAssociative,IAssociative>>`,
+  `<<dunaj.coll.spi.ad#IIndexed,IIndexed>>`, ...
+* references -
+  `<<dunaj.state.spi.ad#IMutable,IMutable>>`,
+  `<<dunaj.state.spi.ad#IReference,IReference>>`,
+  `<<dunaj.state.spi.ad#IPending,IPending>>`, ...
+* abstract data types -
+  `<<dunaj.coll.spi.ad#ISeq,ISeq>>`,
+  `<<dunaj.coll.spi.ad#IPersistentMap,IPersistentMap>>`,
+  `<<dunaj.state.ref.spi.ad#IRef,IRef>>`, ...
+* factories - see Factories section below
+
+Existing functions from the core API were modified to add support
+for protocols. This includes both predicates
+(like `<<dunaj.coll.api.ad#seq?,seq?>>`,
+`<<dunaj.coll.api.ad#counted?,counted?>>` or
+`<<dunaj.state.api.ad#reference?,reference?>>`) and normal functions
+(e.g. `<<dunaj.coll.api.ad#nth,nth>>`,
+`<<dunaj.coll.api.ad#pop,pop>>` or
+`<<dunaj.state.api.ad#reset!,reset!>>`).
+
+Deftypes are slightly changed. They no longer import class but rather
+intern a var containing type map object, in a way similar to what
+`defprotocol` macro is currently doing for protocols. Note that
+deftypes can be used in a type signature, generating correct type
+hints when needed.
+
+[source,clojure,linesnum]
+----
+(deftype Box
+  "An immutable reference type holding given value for situations
+  where reference is needed and you have just a value and no
+  need to change the referenced value."
+  [val :- Any]
+  IReference
+  (-deref [this] val))
+
+Box
+;;=> {:tsig [#dunaj.type.AnySignature{}], :clojure.core/type true, :on foo.bar.Box, :on-class foo.bar.Box}
+
+(defn box :- Box
+  "Returns a boxed x, an object which implements IReference.
+  Dereferencing such object returns back the original value."
+  [x :- Any]
+  (->Box x))
+
+@(box :foo)
+;;=> :foo
+----
+
+== Syntax and conventions
+
+* Protocol methods are never a part of the public API, but are
+  documented separatedly in the SPI part of the documentation.
+
+* Protocols that have no protocol methods are called marker protocols
+  and are mainly used for specifying abstract data types.
+
+* Syntax of `defprotocol` macro is brought closer to the
+  syntax of other `def`-like constructs.
+
+Following example shows protocol definitions with docstrings, type
+signatures and metadata present.
+
+[source,clojure,linesnum]
+--
+(defprotocol IPersistentMeta
+  "A feature protocol for objects with persistent metadata."
+  {:added "1.0"
+   :see '[IMeta IMutableMeta]
+   :category "Metadata"}
+  (-assoc-meta :- IPersistentMeta
+    "Returns this with m associated as object's metadata."
+    [this m :- KeywordMap]))
+
+(defprotocol IValidator
+  "A feature protocol for objects which can be validated."
+  {:predicate 'validable?}
+  (-validator :- (I IMutable IReference)
+    "Returns mutable reference to the current validator fn.
+    Referenced value is nil if no validator is set."
+    {:foo "protocols methods accept metadata map too"}
+    [this]))
+--
+
+* By convention, all protocol names are camel cased and start with the
+  capital letter `I`.
+
+* Predicate names follow the usual syntax for predicates, and will
+  return a boolean value.
+
+* Protocol methods are hyphen cased and start with the hyphen
+  character `-`.
+
+* Adjectives are preferred for protocol names (`IAtomic`,
+  `IPeekable`), with nouns being used mainly for protocols specifying
+  abstract data types (`ISeq`, `IPersistentMap`). Names of factory
+  protocols must end with 'Factory' (`ICollectionFactory`,
+  `IInstantFactory`).
+
+== Factories
+
+Factory protocols help to formalize the requirements of the
+construction phase for custom implementations of abstract data types
+in a standardized way.
+
+.Motivating story
+****
+Imagine that you want to provide a new type of persistent collection,
+lets say a new type of persistent vector based on
+https://github.com/clojure/data.finger-tree[finger trees].
+By implementing collection-related protocols like
+`IPersistentCollection` or `IIndexed`, existing built-in
+collection-related functions `conj` and `nth`
+will automatically support the newly created vector type.
+The construction phase is however not addressed by those protocols,
+and it is up to implementer's diligence and thoughtfulness to
+provide a complete set of ad-hoc constructors for the new collection
+type.
+
+This can easily get messed up with e.g. map-like collections,
+where you can have constructors that expect sequence of interleaved
+keys and values (`hash-map` like), key-value pairs, or two
+collections, one for keys and other for values (`zipmap` like).
+For some collection types, custom copy constructors (like `set`)
+may be needed in order to fulfill advertised performance guarantees.
+Moreover, implementers have to devise a custom names for their
+constructors or put them in a separate namespace, neither of which
+make the usage of custom collection types particulary simple.
+****
+
+Factory protocols represent an abstraction of a constructor for
+abstract data types. By implementing these protocols, implementers can
+achieve a better integratation of their custom types into the Dunaj.
+Following list describes several built-in abstract data types and
+their factory protocols:
+
+* `<<dunaj.coll.spi.ad#ICollectionFactory,ICollectionFactory>>` -
+  Implementations of this protocol must provide constructor taking
+  individual items and a copy constructor, taking another collection
+  as an argument. Instances of this factory protocol are passed into
+  built-in `<<dunaj.coll.api.ad#__GT_collection,-&gt;collection>>` and
+  `<<dunaj.coll.api.ad#collection,collection>>` constructors.
+* `<<dunaj.coll.spi.ad#IConvolutionFactory,IConvolutionFactory>>` -
+  Constructor taking interleaved items (e.g. key1 val1 key2 val2)
+  and a constructor that takes collections of keys, values, etc.
+  Instances of this factory are
+  passed into built-in
+  `<<dunaj.coll.api.ad#__GT_convolution,-&gt;convolution>>` and
+  `<<dunaj.coll.api.ad#convolution,convolution>>` constructors.
+* `<<dunaj.time.spi.ad#IInstantFactory,IInstantFactory>>` - Factory
+  protocol for instant types. Used in
+  `<<dunaj.time.api.ad#instant,instant>>` constructor.
+* `<<dunaj.math.random.spi.ad#IRngFactory,IRngFactory>>` - Factory
+  protocol for random number generators.
+  Used in `<<dunaj.math.random.api.ad#rng,rng>>` constructor.
+
+Instances of factory protocols are called *factories*. By convention,
+factory is implemented as a record, exposing all its options as
+record fields. This provides a powerful and standardized approach
+to the construction phase of any abstract data type.
+
+.Usage example
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.coll :refer [->collection convolution]]
+            [dunaj.coll.rbt-sorted-map :refer [rbt-sorted-map-factory]]))
+
+;; dunaj provides factories for built-in collection types
+rbt-sorted-map-factory
+;;=> #dunaj.coll.rbt_sorted_map.RbtSortedMapFactory{:comparator nil}
+
+(->collection rbt-sorted-map-factory [1 :foo] [3 :baz] [2 :bar])
+;;=> {1 :foo, 2 :bar, 3 :baz}
+
+(convolution rbt-sorted-map-factory [1 3 2] [:foo :baz :bar])
+;;=> {1 :foo, 2 :bar, 3 :baz}
+
+;; custom comparator
+(convolution (assoc rbt-sorted-map-factory :comparator >) [1 3 2] [:foo :baz :bar])
+;;=> {3 :baz, 2 :bar, 1 :foo}
+--
+
+With the introduction of factories, existing constructors such as
+`vector`, `set`, and `str` become a mere convenience functions that
+call factory protocol methods with default factories for a particular
+abstract data type.
+
+[source,clojure,linesnum]
+--
+(defn sorted-set-by :- (I ISorted IPersistentSet)
+  "Returns a sorted set with contents of coll and a custom comparator."
+  [comparator :- Function, coll :- []]
+  (collection (assoc sorted-set-factory :comparator comparator) coll))
+--

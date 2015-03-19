@@ -1,0 +1,59 @@
+{pmap
+ "(defn pct
+  \"Waits a bit and prints current thread.\"
+  [_]
+  (java.lang.Thread/sleep 500)
+  (.getId (current-thread)))
+;;=> #'foo.bar/pct
+
+(time (doall (map pct (range 10))))
+;; Elapsed time: 5002.361514 msecs
+;;=> (30 30 30 30 30 30 30 30 30 30)
+
+(time (doall (pmap 5 pct (range 10))))
+;; Elapsed time: 1004.471406 msecs
+;;=> (29 31 32 33 34 34 33 32 31 29)
+
+(time (doall (pmap 10 pct (range 10))))
+;; Elapsed time: 501.328778 msecs
+;;=> (34 31 29 32 33 35 36 37 38 39)"
+ pmap-unordered
+ "(defn f
+  \"Waits a random bit and returns x.\"
+  [x]
+  (java.lang.Thread/sleep (rand-integer 100))
+  x)
+;;=> #'foo.bar/f
+
+(time (reduce + (pmap 50 f (range 1000))))
+;; Elapsed time: 1822.661065 msecs
+;;=> 499500
+
+(time (reduce + (pmap-unordered 50 f (range 1000))))
+;; Elapsed time: 1027.149603 msecs
+;;=> 499500"
+ pmap*
+ "(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.concurrent.parallel :refer [pmap-unordered* pmap*]]
+            [dunaj.concurrent :refer [default-future-executor]]))
+
+(defn f
+  \"Waits a random bit and returns x.\"
+  [x]
+  (java.lang.Thread/sleep (rand-integer 100))
+  x)
+;;=> #'foo.bar/f
+
+(defn test-xf
+  [xf]
+  (time (doall (sequence xf (range 100)))))
+;;=> #'foo.bar/test-xf
+
+(test-xf (pmap* @default-future-executor 10 f))
+;; Elapsed time: 767.947816 msecs
+;;=> (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99)
+
+(test-xf (pmap-unordered* @default-future-executor 10 f))
+;; Elapsed time: 567.478483 msecs
+;;=> (2 3 4 11 5 7 1 6 15 9 8 14 19 0 18 12 13 10 27 26 21 17 25 22 16 20 28 23 29 36 31 35 24 37 32 30 41 33 40 43 34 45 39 42 38 52 47 48 46 50 49 56 58 44 54 51 53 66 57 63 59 55 67 64 60 61 71 62 65 70 74 68 77 82 72 79 69 78 73 83 87 88 76 75 80 85 84 86 92 94 81 91 99 93 95 89 90 98 96 97)\""}

@@ -1,0 +1,22 @@
+{nil
+ "(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.set :as ds]))
+
+(ds/set-complement #{})
+;;=> 𝕌
+
+(ds/difference ds/U #{1 2})
+;;=> #{1 2}ᶜ
+
+(ds/union #{1} (disj ds/U 3) (disj ds/U 4 3) #{4})
+;;=> #{3}ᶜ
+
+(ds/union (disj ds/U 3 4) (disj ds/U 4) #{4})
+;;=> 𝕌
+
+(ds/intersection (disj ds/U 3) (disj ds/U 4 3))
+;;=> #{4 3}ᶜ
+
+(ds/intersection #{4 5} (disj ds/U 3 5) #{3 4})
+;;=> #{4}"}

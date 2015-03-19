@@ -1,0 +1,28 @@
+{nil
+ "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.regex :refer [split]]))
+
+(canonical #\"[a-zA-Z]*\")
+;;=> \"[a-zA-Z]*\"
+
+(matches #\"(a)(sdf)\" \"asdf\")
+;;=> [\"asdf\" \"a\" \"sdf\"]
+
+;; must match entire input
+(matches #\"(a)(sdf)\" \"asdfX\")
+;;=> nil
+
+;; parse-whole is different than matches
+(seq (parse-whole #\"(a)(sdf)\" \"asdfX\"))
+;;=> (\"asdf\" \"a\" \"sdf\")
+
+;; parse replaces clojure.core/re-seq
+(seq (parse #\"(a)(sdf)\" \"asdffsadasdfdd\"))
+;;=> ([\"asdf\" \"a\" \"sdf\"] [\"asdf\" \"a\" \"sdf\"])
+  
+(split #\"a\" \"asdfaasdfasdf\")
+;;=> (\"\" \"sdf\" \"\" \"sdf\" \"sdf\")
+
+(split #\"a\" \"asdfaasdfasdf\" 2)
+;;=> (\"\" \"sdfaasdfasdf\")"}

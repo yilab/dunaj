@@ -1,0 +1,45 @@
+{nil
+ "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource :refer [status]]
+            [dunaj.concurrent.thread :refer [sleep]]))
+
+(with-io-scope
+  (let [r (http \"http://httpbin.org/post\")
+        c (acquire! (assoc r :request-method :post))
+        fc (format utf-8 c)]
+    (println! \"config\" (config c))
+    (println! \"sent\" (write! fc \"key1=val1&key2=val2&key1=val3\"))
+    (println! \"response\" (str (read! fc)))
+    (println! \"status\" @(status c))
+    (sleep 100)))
+;; config {:uri #uri \"http://httpbin.org/post\" :proxy nil :secure? false :allow-ui? nil :timeout nil :use-caches? nil :follow? nil :request-properties nil :request-method :post :chunked-streaming nil :hostname-verifier nil :ssl-context nil :batch-size nil}
+;; sent 29
+;; response {
+;;   \"args\": {}, 
+;;   \"data\": \"\", 
+;;   \"files\": {}, 
+;;   \"form\": {
+;;     \"key1\": [
+;;       \"val1\", 
+;;       \"val3\"
+;;     ], 
+;;     \"key2\": \"val2\"
+;;   }, 
+;;   \"headers\": {
+;;     \"Accept\": \"text/html, image/gif, image/jpeg, *\"; q=.2, */*; q=.2\", 
+;;     Connect-Time\": \"2\", 
+;;     \"Connection\": \"close\", 
+;;     \"Content-Length\": \"29\", 
+;;     \"Content-Type\": \"application/x-www-form-urlencoded\", 
+;;     \"Host\": \"httpbin.org\", 
+;;     \"Total-Route-Time\": \"0\", 
+;;     \"User-Agent\": \"Java/1.8.0_25\", 
+;;     \"Via\": \"1.1 vegur\", 
+;;     \"X-Request-Id\": \"c550e93d-a79d-47c2-aab9-d0f9c22c663d\"
+;;   }, 
+;;   \"json\": null, 
+;;   \"url\": \"http://httpbin.org/post\"
+;; }
+;; status {:proxy? false :response-message OK :response-code 200 :request-method POST :headers {Content-Type application/json Via 1.1 vegur Date Wed, 03 Dec 2014 12:29:47 GMT Content-Length 627 Connection keep-alive Access-Control-Allow-Credentials true Access-Control-Allow-Origin * Server gunicorn/18.0 nil HTTP/1.1 200 OK}}
+;;=> nil"}

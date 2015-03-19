@@ -1,0 +1,37 @@
+{nil
+ "(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.string :refer [lower-case]]))
+
+(->sorted-set :b :a :c)
+;;=> #{:a :b :c}
+
+(config (->sorted-set :b :a :c))
+;;=> {:comparator #<DefaultComparator clojure.lang.RT$DefaultComparator@5d1d396d>}
+
+(defn custom-comparator :- Integer
+  \"Returns case insensitive comparator for named objects.\"
+  [x :- INamed y :- INamed]
+  (compare (lower-case (name x)) (lower-case (name y))))
+;;=> #'foo.bar/custom-comparator
+
+(->sorted-set :b :a :C)
+;;=> #{:C :a :b}
+
+(->sorted-set-by custom-comparator :b :a :C)
+;;=> #{:a :b :C}
+
+(flip (->sorted-set :b :a :c))
+;;=> #{:c :b :a}
+
+(def v (range 128))
+;;=> #'foo.bar/v
+
+(def s (sorted-set (map (comp keyword ->str char) v)))
+;;=> #'foo.bar/s
+
+(ascending? s)
+;;=> true
+
+(section s :a :z)
+;;=> (:a :b :c :d :e :f :g :h :i :j :k :l :m :n :o :p :q :r :s :t :u :v :w :x :y)"}

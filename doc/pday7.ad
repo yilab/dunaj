@@ -1,0 +1,169 @@
+A conversion between different data formats is a frequent operation in
+many applications. Dunaj introduces the concept of data formatters
+that formalizes the process of converting data from one format into
+another.
+
+A formatter is a collective name for Dunaj's data parser and
+printer. A parser converts information from its external or low level
+representation (used for storage or communication) into form that is
+of higher level of abstraction, and is better understood and supported
+by the application. Printer does the opposite thing.
+Formatters are not limited to parsing from/printing to strings,
+but are designed to work with any type of data, even for binary
+decoding/encoding.
+
+Goals of this experiment are as follows:
+
+* Provide dedicated functions for parsing and printing that integrate
+  well with the rest of the API, including transducers
+* Provide protocols and helper functions for implementers of custom
+  data formatters
+* Make formatters efficient by utilizing available optimizations
+
+Dunaj provides `parse` and
+`print` functions that perform a data
+format conversion. They take a collection as an input and return
+a collection recipe that contains the data in a desired format.
+Formatters may internally use batched reduction to speed up
+the conversion process.
+
+== Built in data formatters
+
+Dunaj provides following built-in formatters:
+
+* `utf-8`/`utf-16`/`charset-formatter` - parsers and printers
+* `clj`/`edn`/`json` - parsers and printers
+* `lazy-clj`/`lazy-edn`/`lazy-json` - lazy parsers
+* `pretty-clj`/`pretty-edn`/`pretty-json` - pretty printers
+* a string - a printf like printer
+* a regular expression - parsing regexes
+* `html` - basic html printer
+
+IMPORTANT: Most formatters are implemented as factories and they
+provide numerous options for further customizations
+
+.Examples of using Dunaj's built-in parsers
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.format.edn :refer [lazy-edn]]))
+
+(str (parse utf-8 [72 101 108 108 111 32 119 111 114 108 100]))
+;;=> "Hello world"
+
+(seq (parse #"(a)(sdf)" "asdffsadasdfdd"))
+;;=> (["asdf" "a" "sdf"] ["asdf" "a" "sdf"])
+
+;; with parse-whole, entire collection must parse into one result item
+(parse-whole json "{\"foo\": 3}")
+;;=> {"foo" 3}
+
+;; parser with custom option
+(parse-whole (assoc json :key-decode-fn keyword) "{\"foo\": 3}")
+;;=> {:foo 3}
+
+;; some parsers provide various safety features...
+(first (parse (assoc edn :container-item-limit 5000)
+              (prepend \[ (cycle ":foo "))))
+;; java.lang.IllegalStateException: parser engine error: container item count reached 5001
+
+;; with sane defaults
+(parse-whole clj (repeat \[))
+;; java.lang.IllegalStateException: parser engine error: container level count reached 1000001
+
+;; lazy parsing of infinite input
+(seq (take 10 (second (parse lazy-edn (concat "[1 2] [3 " (cycle ":foo "))))))
+;;=> (3 :foo :foo :foo :foo :foo :foo :foo :foo :foo)
+--
+
+.Examples of using Dunaj's built-in printers
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.format.edn :refer [pretty-edn]]))
+
+(print "%s : %06X" "hello world" 42)
+;;=> "hello world : 00002A"
+
+(vec (print utf-16 "Hello world"))
+;; [-2 -1 0 72 0 101 0 108 0 108 0 111 0 32 0 119 0 111 0 114 0 108 0 100]
+
+(str (print-one json {:foo "bar" "baz" -3}))
+;;=> "{\"baz\":-3,\"foo\":\"bar\"}"
+
+(str (print-one html [:html
+                      [:body
+                       [:div 'menu
+                        [:ul
+                         [:li "About"]
+                         [:li :cur "Intro"]
+                         [:li "Contact"]]]
+                       [:div 'content
+                        [:p :header "A title"]
+                        [:p "Lorem ipsum dolor sit amet"]]]]))
+;;=> "<html><body><div id=\"menu\"><ul><li>About</li><li class=\"cur\">Intro</li><li>Contact</li></ul></div><div id=\"content\"><p class=\"header\">A title</p><p>Lorem ipsum dolor sit amet</p></div></body></html>"
+
+;; pretty printing that generates line breaks and indentation
+(str (print-one pretty-edn {:foo 'bar "baz" nil
+                            :qux [1 2 3 4 5 6 7 8 9 0]
+                            :asdf "lorem ipsum dolor sit amet"}))
+;;=> "{\"baz\" nil,\n :asdf \"lorem ipsum dolor sit amet\",\n :qux [1 2 3 4 5 6 7 8 9 0],\n :foo bar}"
+--
+
+.Formatters can return transducers too
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.concurrent.port :refer [onto-chan! into! close!]]))
+
+(def xf (comp (parse utf-8) (parse json) (filter even?)))
+
+;; encoded numbers from 0 to 9
+(def data [48 32 49 32 50 32 51 32 52 32 53 32 54 32 55 32 56 32 57])
+
+(def c (chan 100 xf))
+
+(onto-chan! c data)
+
+(def result-c (into! [] c))
+
+(close! c)
+
+(<!! result-c)
+;;=> [0 2 4 6 8]
+--
+
+== Parser and Printer engine
+
+Formatters in Dunaj are implemented as factories that implement
+`IParserFactory` and
+`IPrinterFactory` factory
+protocols. Moreover, Dunaj provides a
+parser and
+printer engines for implementers of
+custom formatters.
+
+Dunaj's parser engine has following features:
+
+* Iterative approach, does not blow stack
+* Supports lazy parsers
+* Supports limits for token length, container item count and nest
+  level
+* Utilizes batched reductions for efficient parsing
+* Can be used to generate parser transducer
+* Able to parse incomplete inputs
+
+Dunaj's printer engine has following features:
+
+* Supports pretty printing with indentation and optional ANSII color
+  support
+* Limit of number of items printed, including limits for nesting or
+  token length
+* Utilizes batched reductions for efficient printing
+* Can be used to generate printer transducer
+
+See http://imgur.com/kMfulxo[example 1] and
+http://imgur.com/AaM70rG[example 2] of pretty printer's color output.

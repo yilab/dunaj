@@ -1,0 +1,42 @@
+{defreducing
+ "(ns foo.bar
+    (:api dunaj)
+    (:require [dunaj.coll :refer [IReducing -step]]
+              [dunaj.coll.helper :refer [defreducing]]))
+
+(defreducing MapReducing
+  \"Reducing type for map\"
+  [r :- IReducing, mapf :- AnyFn]
+  (-step [this ret val] (-step r ret (mapf val)))
+  (-step [this ret val val2] (-step r ret (mapf val val2)))
+  (-step [this ret val val2 val3] (-step r ret (mapf val val2 val3)))
+  (-step [this ret val val2 val3 val4] (-step r ret (mapf val val2 val3 val4)))
+  (-step [this ret val val2 val3 val4 more] (-step r ret (apply mapf val val2 val3 val4 more))))
+
+  ;; see example on defxform for idiomatic use of types created with defreducing"
+ defxform
+ ["(ns foo.bar
+    (:api dunaj)
+    (:require [dunaj.coll.helper :refer [defxform]]))
+
+;; using MapReducing from example on defreducing
+
+(defxform my-map
+  \"A transducer that applies `mapf` to each step value.\"
+  [mapf :- AnyFn]
+  ([r] (->MapReducing r mapf))
+  :unpack false)"
+  ";; more complex example showing how custom sectioning is handled
+
+(defxform take*
+  \"A transducer that passes at most `n` step values.\"
+  [n :- Int]
+  ([r] (->TakeReducing r n)) ;; see dunaj.coll.recipe sources
+  :count ([tc-fn] #(tc-fn (imin n (iint %))))
+  :section ([ts-fn]
+              (when tc-fn
+                (let [nu-section #(dunaj.coll/-section %1 %2 %3)]
+                  #(let [l (tc-fn (count %2))
+                         ne (prepare-ordered-section %3 %4 l)]
+                     (ts-fn nu-section %2 %3 ne)))))
+  :fold false)"]}

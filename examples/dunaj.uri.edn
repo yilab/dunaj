@@ -1,0 +1,23 @@
+{nil
+ "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.uri :refer [uri relativize resolve]]))
+
+(uri :http \"example.com\" 338)
+;;=> #uri \"http://example.com:338\"
+
+#uri \"http://example.com/foo/bar\"
+;;=> #uri \"http://example.com/foo/bar\"
+
+(:query (uri \"http://example.com/foo/bar?q=baz&r=qux\"))
+;;=> \"q=baz&r=qux\"
+
+(:host (uri \"http://example.com/foo/bar\"))
+;;=> \"example.com\"
+
+(relativize (uri \"http://example.com/foo\")
+            (uri \"http://example.com/foo/d\"))
+;;=> #uri \"d\"
+
+(resolve (uri \"http://example.com/foo/\") \"../d\")
+;;=> #uri \"http://example.com/d\""}

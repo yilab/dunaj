@@ -1,0 +1,18 @@
+Dunaj, just like Clojure, provides multiple ways to manage concurrency
+and perform asynchronous or parallel computations.
+
+.Concurrency related namespaces
+****
+* <<dunaj.concurrent.api.ad#,dunaj.concurrent>> - General concurrency facilities, futures, promises
+* <<dunaj.concurrent.agent.api.ad#,dunaj.concurrent.agent>> -
+Agents, a reference object to the result of an asynchronous
+computation, with additional distinctive features
+* <<dunaj.concurrent.forkjoin.api.ad#,dunaj.concurrent.forkjoin>> -
+Parallel computations based on a Fork-join model
+* <<dunaj.concurrent.parallel.api.ad#,dunaj.concurrent.parallel>> -
+Parallel computations based on thread pools
+* <<dunaj.concurrent.port.api.ad#,dunaj.concurrent.port>> -
+Asynchronous programming through ports and channels
+* <<dunaj.concurrent.thread.api.ad#,dunaj.concurrent.thread>> -
+Concurrency primitives for creating and managing threads
+****

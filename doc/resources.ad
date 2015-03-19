@@ -1,0 +1,264 @@
+This chapter describes language skeleton for designing and
+working with network resources in a distributed system. For this
+purpose, Dunaj defines abstractions for messages, resources and
+services. The goal is to define simple, composable and
+interoperable abstractions which fit into existing language
+concepts.
+
+A distributed system is a collection of interacting computer
+processes located on networked computers. These processes
+communicate and coordinate their actions by passing messages.
+
+== Basic concepts
+
+A Message is an information that is sent between communication
+endpoints. Examples of message types: byte, string,
+number, collection or ad-hoc data type. Structure of
+message is defined by a communications protocol.
+
+.In Dunaj
+NOTE: Message has no predefined structure but can only be
+      represented by a serializable data type. Most persistent or
+      immutable data types can be used for this purpose.
+
+=== Message stream
+
+Most of time, messages exchanged between communication endpoints
+form a message stream. Depending on the purpose of communication,
+this stream may be finite, have a predefined length or even be
+infinite.
+
+.In Dunaj
+NOTE: Stream is represented by a collection recipe. Stream
+      cannot be 'closed' per se, it can only be finished. Because
+      each stream is represented by a reducible collection, there
+      is no need to represent the 'end of stream' value.
+
+=== Communications protocol
+
+A communications protocol is the set of rules governing message
+exchange between communication endpoints.
+Examples of communication protocols: HTTP, WebDAV,
+TCP, UDP, RS232, Modbus, memcached, WebRTC, websocket, bittorrent.
+Protocols are often built upon other protocols
+(e.g. WebDAV is an extension of HTTP, which can be implemented on
+top of TCP, which uses IP, etc.).
+
+.In Dunaj
+NOTE: Dunaj does not and will not represent communications
+      protocol per se. If you want to represent communications
+      protocol's functionalities which can be futher utilized,
+      use the concept of resources and services.
+
+=== Communication channel
+
+A communication channel mediates a communication between
+endpoints for the purpose of message exchange.
+Messages exchanged between endpoints are defined and sent/received
+according to the specified communications protocol, supported and
+agreed upon by all involved parties.
+A communication channel can be in form of a connection (e.g. TCP),
+or may be connectionless (UDP). It can mediate a communication
+between two entities (e.g. unicast), or between many entities
+(e.g. multicast, broadcast). Communication channel can be one
+direction only (simplex), or it may mediate two way communication
+(half/full duplex).
+
+.In Dunaj
+NOTE: Dunaj does not and will not represent communication
+      channels per se. Use the representation for computer
+      resources (e.g. TCP socket) that provide abstractions
+      for communication endpoints on a given computer system.
+
+== Resource
+
+A resource is an object of limited availability,
+optionally identified by a URI,
+that models a computer or network resource.
+Resource example: file, web page, message queue service,
+database management system, weather web service, network socket.
+
+Resource related concepts described in this section are defined in a
+<<dunaj.resource.api.ad#,dunaj.resource>> namespace.
+
+=== Computer Resource
+
+A computer resource, or system resource, is resource of limited
+availability within a computer system. Computer resource and
+services it provides can be used by computer processes running
+in the respective computer system.
+Examples of computer resources: file, network socket.
+
+Because these resources are of limited availability, computer
+process needs to acquire computer resource before it can use it.
+More importantly, computer process have to release acquired
+resources as soon as they are no longer needed.
+
+=== Network resouce
+
+A network resource is a resource accessible within a computer
+network. Network resources provide services that perform one
+or more functions as a result of a message received over a network
+from a consumer.
+Examples of network resources: weather web service, web
+server, database management system, web page.
+
+Computer process can access network resources exclusively via
+a communication channel. This involves often nontrivial process
+of setting up and maintaining a communication channel, in which
+computer resources are utilized and specific steps defined by a
+respective communication protocol have to be taken. If such process
+can be standardized, it can be implemented into a object called
+client, which takes care of network resource setup and management.
+Look further down for descriptions of client
+and other relevant abstractions.
+
+=== Resource Acquisition
+
+Resources are acquired via a respective resource factories.
+(The term 'factory' relates to the process of creating data objects
+representing acquired resources, not to the resource creation as
+such. When acquiring, no new resources are created. If new
+resource of a given type can be created, it is done in an
+API or service unrelated to the resource factory or even to the
+functionalities of a given resource.)
+
+.In Dunaj
+NOTE: Resource factory is represented by a record object tha
+      implements `IAcquirableFactory` protocol. The resource factory
+      contains all configuration in its map-like part. That way the
+      resource can be configured as a normal map. The factory
+      protocol defines `-acquire!` method, which returns
+      object representing an acquired resource.
+      An `acquire!` fuction is called with the resource factory as
+      its argument, and it acquires a resource within a given scope
+      as specified in the resource factory configuration.
+      Acquired resource may additionally implement `IConfigured`
+      protocol, which defines `-config` method. This method returns
+      the factory configuration used to acquire the respective
+      resource.
+
+=== Releasing resources
+
+Every resource that is of limited availability has to be released
+as soon as it is no longer needed. Language implements facilities
+for resource scopes that provide automatic release. This feature
+can be opted out with a custom resource acquisition.
+
+.In Dunaj
+NOTE: In Dunaj, every object representing such resource has to
+      implement `IReleasable` protocol. Same applies for objects that
+      'own' a resource outside their method calls. `IReleasable`
+      protocol defines `-release!` method. This method
+      should be called when resources this object 'owns' or
+      represents are no longer needed. To prevent resource leaks,
+      objects implementing `IReleasable` should be wrapped in a
+      `with-scope` macro. Newly acquired objects are pushed to the
+      current scope, often as a weak refs, if host supports such
+      construct. Scope releases resources in LIFO mode.
+      If supported by host, resources must also be
+      released upon such object's finalization (e.g. finalize
+      method in Java). Any further operations on a released
+      resource must throw an exception.
+      For more detailed control over the release process, Dunaj
+      defines `grab-scope` and `release-scope!` functions.
+
+== Service
+
+Service is a set of reusable software functionalities provided by
+a network resource, which can be utilized by a service consumer
+(some computer process) via a communication channel. Network
+resource that provides a service is called a service provider.
+
+.In Dunaj
+NOTE: Service is represented by a protocol.
+
+=== Service providers, consumers and requesters
+
+Network resource which provides a specific service is called a
+service provider. Computer process that utilizes
+such service is called a service consumer. The middleman between
+consumer and provider is called a service requester, and it is used
+to establish and maintain a communication channel between external
+service provider and a service consumer.
+
+Service provider is often called a server and a service requester
+is called a client. In some cases service requester functions also
+as a service provider for other consumers. Such resource is called
+a service peer. This concept is used e.g. in P2P services such
+as bittorrent.
+
+=== Client
+
+Client, also known as a service requester, helps to establish a
+communication channel between a service consumer and a service
+provider. It may handle also such tasks as a reconnection,
+service partitioning (load balancing, sharding), handshaking,
+session initialization and other necessary things which may have
+to be realized before service provider's functionalities can
+be utilized by a service consumer.
+Client may keep an opened connection, have a connection pool and
+is free to establish new channels if needed or close the ones which
+are no more used. Therefore, it is generally preferred to use a
+client instead of lower level communication channel, if a suitable
+client is provided.
+
+IMPORTANT: Client may expose to the service consumer a protocol
+           which is different from those of service providers.
+           This is especially true in P2P services, where e.g.
+           handshaking or session initialization may be handled
+           transparently without consumer's intervention.
+
+.In Dunaj
+NOTE: Client objects are created in the same way as resources
+      are acquired. There are client factories, implementing
+      `IAcquirableFactory` protocol and providing map-like
+      configuration. Actual clients implement `IReleasable` and
+      `IConfigured`.
+      Clients factories can alternatively implement `ISystem`
+      protocol that provides means to start a complex client that
+      requires multiple dependencies.
+
+=== Server
+
+Server, also known as a service provider, is a network resource.
+The computer process which implements this network resource
+usually keeps an opened communication channel for listening for
+service requests from clients.
+
+.In Dunaj
+NOTE: Server objects are created in the same way as clients.
+
+=== Peer
+
+Peer is a network resource which also serves as a Client for
+the respective computer process. All requirements for the
+Client and Server applies also for Peer.
+
+=== Service directory
+
+Data objects which can be used for service coordination.
+In some cases server may compose its components dynamically.
+(e.g. WebRTC peers need to agree on a server for SIP)
+
+.In Dunaj
+[NOTE]
+--
+Dunaj currently implements only a simple resource discovery
+with a `resource` function, which uses uri scheme to map resource
+type from currently registered resource providers.
+Alternative proposal consists of separate maps for service
+implementations and service directory
+
+* Service implementation map
+** List of client/server factories indexed by services which
+   they request/provide.
+** IServiceProtocol symbol -> Client/Server Factory symbol
+** no need to share, is built locally out of available
+   client/service implementations.
+* Service directory
+** IServiceProtocol symbol -> factory configuration maps with uri
+** may be passed between computer processes or there may
+   be a dedicated network resource which provides service
+   directory features.
+--

@@ -1,0 +1,24 @@
+{nil
+ "(def v (take 1000000 (cycle (vec (range -100 100)))))
+;;=> #'foo.bar/v
+
+(def vp (vec-of :byte v))
+;;=> #'foo.bar/vp
+
+;; primitive vectors support batched reduce and they internally store data in primitive arrays. All this can speed up collection operations.
+
+(time (with-scope (write! \"out.bin\" v)))
+;; Elapsed time: 215.490853 msecs
+;;=> 1000000
+
+(time (with-scope (write! \"out.bin\" vp)))
+;; Elapsed time: 70.27703 msecs
+;;=> 1000000
+
+(time (take 10 (sort v)))
+;; Elapsed time: Elapsed time: 1887.72503 msecs
+;;=> (-100 -100 -100 -100 -100 -100 -100 -100 -100 -100)
+
+(time (take 10 (sort vp)))
+;; Elapsed time: 261.35322 msecs
+;;=> (-100 -100 -100 -100 -100 -100 -100 -100 -100 -100)"}

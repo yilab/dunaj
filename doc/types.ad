@@ -1,0 +1,116 @@
+Protocol - Type - Object ruminations.
+
+DRAFT
+
+== Protocol
+
+* One of two ways to represent a concept.
+** Protocol is computer manifestation of concept
+** Optionally, protocol specifies a set of methods
+*** The method specification is in terms of namespace qualified
+    method name and one or more signatures.
+
+* Marker protocol - for grouping objects without any requirements
+* Regular protocol - groups objects and gives a requirement for set
+  of methods which they must
+  implement if they wish to satisfy this protocol. Method is declared
+  by its namespace qualified name and a one or more signatures.
+
+* Method - A function which dispatches (has different implementation)
+  on a type of the object passed as a first argument.
+
+Objects belonging to a given protocol P are said to *satisfy protocol
+P*.
+
+== Type
+
+* At least, type can be used in a type annotation
+** Type has a type and identity.
+** Name of type is not its identity.
+
+* abstract data type - a class of concrete data types. Represented by
+  an Abstract type protocol
+* concrete data type - a class of concrete objects. Is created with
+  deftype
+* data type - a concrete data type
+
+== Object
+
+* First class abstraction
+* Object not in sense of OO programming.
+* Object is an instance of a type.
+* Other name for an object - entity.
+* a stable logical entity
+* exists as long as some other object relates to it through its state
+* have a corresponding host representation
+
+Regarding primitive values:
+
+[quote, Gilad Bracha]
+____
+If anyone wants to drivel about these supposed distinctions that
+values are not objects etc. please correct yourself. They don't have
+to have state. Whether they have identity, yes, 3 has an identity.
+It just happens to be the same identity everywhere. But none of this
+stops it being an object.
+____
+
+* Value object
+** conveys an immutable value
+** represented as a distinct object or as a primitive value
+** has identity, in case of primitive values, the value is the
+   identity
+** includes Numbers, immutable collections, and primitive numbers,
+   if hosts supports it
+* Reference object
+** has state
+** time model defined by reference type
+** includes Var, Ref, Atom, ...
+* Resource object
+** Computer or network resource
+** Of limited availability
+* Async object
+** models asynchronous computation
+** future, promise, agent, channel
+* Macro object
+** immutable
+** not first class
+** can be hold only by Var
+* Protocol/Type object
+** map-like
+** is first class
+** represents a protocol/type
+** immutable
+* Function object
+** immutable
+** represents a function
+
+Object has following observable parts:
+
+* required:
+** identity (in general you cannot get its value, just compare two
+   identities together)
+** you cannot ask "what's the value of this object's identity?",
+   or "give me the identity of this object". Identity of object
+   cannot be separated from object itself. It is not some
+   independent value. All you can do with identity is to compare two
+   object based on their identity.
+** identity is the relation each thing bears just to itself (WP).
+   This relation is exposed in identical? predicate.
+** type name (nominal type system)
+* optional and mutually exclusive:
+** value (immutable)
+** state
+*** object can relate to different object in different points of time
+*** controlled mutable relation between object and another object
+* optional:
+** auxiliary states - does not affect value, if the object is the
+value object
+
+Observable means that there exists a function or a method for this
+type of the object, such as the output of this method is dependent
+on given part of the object.
+
+What you can do with object is determined by protocols which the
+object's type implement. The only guaranteed things you can do with
+every object are getting its type and perform identity comparison.

@@ -1,0 +1,251 @@
+Clojure provides excellent facilities for creating, composing and
+building on abstractions. Thanks to great interop support, it is
+easy and even idiomatic for performance sensitive code to fall back
+into host's primary language. Dunaj offers additional and fully
+optional ways to embrace the host platform from the comfort of
+your favorite Lisp. This experiment is specific to the JVM host.
+
+== Improved support for arrays
+
+Dunaj improves support for host arrays. While keeping
+already existing functions that work with specific array types
+(like `<<dunaj.host.array.api.ad#byte_array,byte-array>>` or
+`<<dunaj.host.array.api.ad#aset_short_BANG_,aset-short!>>`) and
+operations accepting any type of array (like
+`<<dunaj.host.array.api.ad#amap,amap>>` or
+`<<dunaj.host.array.api.ad#aget,aget>>`), Dunaj introduces
+a concept of array manager (an enhanced version of Clojure's
+undocumented feature found in gvec.clj) as part of a public API.
+`<<dunaj.host.array.api.ad#array_manager,array-manager>>` and
+`<<dunaj.host.array.api.ad#array_manager_from,array-manager-from>>`
+are used to create instances of array managers and are supplemented
+with dedicated type signatures for arrays and array managers.
+Array managers provide following low level methods:
+
+* `.itemType` - returns item type class
+* `.allocate` - returns new array of given size
+* `.duplicate` - returns new array with content copied from arr,
+                 or its section
+* `.count` - returns number of items in the array
+* `.get` - returns item at given position
+* `.set` - sets item at given position
+* `.copyToBatch` - copies contents from arr into batch (NIO buffer)
+* `.sort` - sorts the array in place with natural ordering
+
+Array managers offer a considerable flexibility for dealing with
+different array types. This allows Dunaj to provide optional
+immutable collection facade on top of arrays, which is available
+through `<<dunaj.host.array.api.ad#adapt,dunaj.host.array/adapt>>`
+function. This thin facade is intended for cases where the array
+represents a data source that is being passed into code which accepts
+regular Dunaj collections.
+
+== Host primitive integers
+
+Clojure chose to use `Long` as a default type for integers.
+This simplifies many things, but there are times where it is
+better to directly support the `Integer` type, as JDK mainly uses
+`int` for passing integer values.
+For those rare cases, Dunaj provides a dedicated namespace called
+<<dunaj.host.int.api.ad#,dunaj.host.int>> that implements macros for
+working with `int` values without unnecessary promoting or boxing.
+Following functionalities are available:
+
+* An `Int` type, constructor and value predicates
+* Common int constants, including ASCII codes (as Clojure
+  automatically compiles integer constants as longs)
+* `<<dunaj.host.int.api.ad#iloop,iloop>>` macro for loops that do not
+  promote ints to longs
+* Basic math facilities for working with ints
+* Bitwise manipulation operations on top of ints
+
+[NOTE]
+Names of all vars provided by
+<<dunaj.host.int.api.ad#,dunaj.host.int>> namespace are prefixed
+with the small letter `i`. Numeric constants are implemented as
+macros and must be unintuitively enclosed in parens.
+
+.Example of using array manager and dunaj.host.int namespace
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require
+   [dunaj.host :refer [ArrayManager]]
+   [dunaj.host.array :refer [array array-manager-from]]
+   [dunaj.host.int :refer [Int iint iloop i== iinc iadd imul i0 i1 i31]]))
+
+(defn array-hash :- Int
+  "Compute host hash code for an array section."
+  [am :- ArrayManager, arr :- AnyArray, begin :- Int, end :- Int]
+  (iloop [i (iint begin), ret (i1)]
+    (if (i== i end)
+      ret
+      (let [v (.get am arr i)]
+        (recur
+         (iinc i)
+         (iadd (if (nil? v) (i0) (.hashCode ^java.lang.Object v))
+               (imul (i31) ret)))))))
+;;=> #'foo.bar/array-hash
+
+(def arr (array [0 1 2 3 4 5 6 7 8 9]))
+;;=> #'foo.bar/arr
+
+(.hashCode [5 6 7 8])
+;;=> 1078467
+
+(array-hash (array-manager-from arr) arr 5 9)
+;;=> 1078467
+--
+
+== More primitive types for functions
+
+Clojure compiles functions into host classes that by default treat
+input arguments and a return value as instances of
+`java.lang.Object`.
+This can be customized by specifying type hints. However, primitive
+types require special handling. Due to the combinatorial
+explosion, not all combinations of primitive types can be supported.
+Clojure supports arbitrary combinations of `java.lang.Object` with 2
+primitive types (`long` and `double`), and only up to 4 input
+arguments.
+
+Dunaj adds support for other combinations of primitive types (and a
+non-primitive `java.lang.Object`):
+
+* 0 or 1 arity functions have full support for all 8 primitive types
+  in any combination (with or without `java.lang.Object`)
+* 2 and 3 arity functions are supported when all input arguments are
+  of a same type. Return type can be any primitive or
+  `java.lang.Object`.
+* additional 2 and 3 arity functions are supported when first argument
+  is `java.lang.Object` and the rest of arguments are of a same type
+
+Dunaj further simplifies the process of creating functions that
+support primitive types. Type signatures automatically emit primitive
+type hints and only for cases where given combination of primitive
+types is allowed.
+
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.host.number :refer [byte]]
+            [dunaj.host.int :refer [Int iadd iint]]))
+
+(defn foo
+  [x]
+  x)
+
+(pt (foo 4))
+;;=> :object
+
+(defn foo+ :- java.lang.Byte
+  [x :- Int, y :- Int]
+  (byte (iadd x y)))
+
+(pt (foo+ 40 2))
+;;=> :byte
+
+(pt (foo+ 400 2))
+;; java.lang.IllegalArgumentException: Value out of range for byte: 402
+
+;; following combination of primitive types is not supported,
+;; Dunaj emits non-primitive type hints
+(defn foo++ :- java.lang.Byte
+  [x :- Int, y :- Any]
+  (byte (iadd x (iint y))))
+
+(pt (foo++ 40 2))
+;;=> :object
+--
+
+NOTE: A special type signature
+`<<dunaj.type.api.ad#NotPrimitive,NotPrimitive>>` is provided for
+cases where primitive types are not desirable.
+
+== Batches and batched reductions
+
+In Dunaj, *Batch is an abstraction of low level data containers for
+bulk data processing.* Under JVM host, batches are implemented as
+Java's NIO buffers.
+
+Dunaj provides `<<dunaj.coll.spi.ad#IBatchedRed,IBatchedRed>>`
+protocol for collections that are able to reduce themselves in
+batches in addition to the classic reduction by individual items.
+The actual batched reduction is performed with
+`<<dunaj.coll.util.api.ad#reduce_batched,reduce-batched>>` and
+`<<dunaj.coll.util.api.ad#batched,batched>>` functions. For the
+implementers, a whole new namespace called
+<<dunaj.host.batch.api.ad#,dunaj.host.batch>> is provided that
+implements batch manager (used in the same way as array manager),
+related type signatures and multiple helper functions.
+
+Batch manager provides following host methods:
+
+* `.itemType` - returns item type class
+* `.wrap` - returns new batch which wraps given array section
+* `.allocate` - returns new batch with given size
+* `.readOnly` - returns new batch which shares data but is read only
+* `.get` - returns item at position (current or explicitly given)
+* `.put` - puts item at posision (current or explicitly given)
+* `.copy` - copy contents from src batch to dst batch or array
+
+Batched reductions are a great help for programs that process or
+handle large amount of raw data, such as programs and libraries doing
+networking or file I/O. Collections or data sources that store their
+contents internally in arrays can provide those arrays (e.g. to the
+array consuming network socket or to the NIO buffer aware file
+channel) through batched reduction safely and without any intermediate
+memory copying. Batched reduction feature is also one of the features
+available in collection recipes through source awareness.
+
+.A naive example of using batched reduction
+[source,clojure,linesnum]
+--
+(def c (.getChannel (java.io.RandomAccessFile. "out.bin" "rw")))
+
+(def v (vec-of :byte (repeat 1000000 42)))
+
+(dored [b (batched v)] (.write c b))
+
+(.close c)
+--
+
+== Unpacked reductions
+
+If collection items are multivalued, the actual item is usually
+passed into the reduction function as a vector of its values.
+A classic example is a hash map, which pass key-value pairs to the
+reduction function. From the implementation point of view, most of
+these vectors are created temporarily, only for the purpose of the
+reduction.
+Dunaj provides `<<dunaj.coll.spi.ad#IUnpackedRed,IUnpackedRed>>`
+protocol for reductions where multivalued items are passed as
+multiple arguments into the reduction function, without a need for
+temporary wrappers.
+
+User code can exploit this feature by using
+`<<dunaj.coll.util.api.ad#reduce_unpacked,reduce-unpacked>>` or
+`<<dunaj.coll.util.api.ad#unpacked,unpacked>>` functions. These
+functions work with any type of collection and fall back to a
+default unpacking implementation (using `apply`) when `IUnpackedRed`
+procotol implementation is not provided. Unpacked reduction feature
+is also one of the features available in collection recipes through
+source awareness.
+
+NOTE: Besides maps, unpacked reductions are also helpful for
+multireducibles, including indexed collections.
+
+[source,clojure,linesnum]
+--
+(def m (zipmap (range 100000) (range 100000)))
+
+(time (reduce (fn [r [k v]] (+ r v)) 0 m))
+;; "Elapsed time: 31.564521 msecs" (Clojure 1.7 alpha5)
+;;=> 4999950000
+
+(time (reduce-unpacked (fn [r k v] (+ r v)) 0 m))
+;; "Elapsed time: 16.718828 msecs"
+;;=> 4999950000
+--

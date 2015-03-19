@@ -1,0 +1,56 @@
+= Dunaj - An alternative core API for Clojure
+
+*See http://dunaj.org[Dunaj homepage] for documentation.*
+
+image::logo/dunaj.png[Dunaj logo]
+
+Dunaj `/ˈdunaɪ/` is a set of core language experiments
+aimed to improve Clojure language and its core API. Dunaj is an
+effort to bring Clojure even more towards *simplicity*,
+*consistency* and *performance*.
+
+Dunaj API is intended to be used by regular Clojure developers,
+either for application or library development.
+Bootstrapping, implementation details and other low level stuff are
+left in `clojure.core` and still accessible for the brave ones.
+
+Dunaj is not a library, but rather a fork of Clojure,
+as changes to the Clojure itself were required. The changes to
+Clojure are hovewer minimal and most of Dunaj is implemented as
+a separate library.
+
+Dunaj integrates well with Clojure. Most of existing Clojure
+libraries and tools can be used from Dunaj without any changes.
+Dunaj implementation is open source. It aims to be fast and stable
+enough to be used in real world projects.
+
+== Usage
+
+See http://dunaj.org/start.html[Getting started guide]
+
+== Get in touch
+
+* Follow https://twitter.com/DunajProject[@DunajProject] to receive
+  latest updates
+* Join the https://groups.google.com/forum/#!forum/dunaj-project[discussion group]
+* Send your questions to dunaj@dunaj.org
+* Receive announcements by
+  http://eepurl.com/bho9Aj[signing up for low-frequency newsletter]
+* Chat in the irc://irc.freenode.net/#dunaj[#dunaj] irc channel
+  at https://freenode.net[freenode]
+
+== License
+
+Copyright (C) 2013, 2015, Jozef Wagner. All rights reserved.
+
+Additional copyright for parts of documentation and/or
+underlying implementation:
+Copyright (C) 2008, 2015, Rich Hickey and Clojure contributors.
+
+The use and distribution terms for this software are covered by the
+Eclipse Public License 1.0
+ (http://opensource.org/licenses/eclipse-1.0.php) which can be
+ found in the file epl-v10.html at the root of this distribution.
+By using this software in any fashion, you are agreeing to be bound
+by the terms of this license.
+You must not remove this notice, or any other, from this software.

@@ -1,0 +1,59 @@
+{nil
+ "(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.coll :refer [->collection collection ->convolution convolution]]
+            [dunaj.string :refer [lower-case]]
+            [dunaj.coll.default :refer [map-factory lst-factory sorted-map-factory]]))
+
+;;; constructors
+
+(->vec 1 2 3 4 5)
+;;=> [1 2 3 4 5]
+
+(lst [1 2 3 4 5])
+;;=> (1 2 3 4 5)
+
+(->vec-of :byte 1 2 3 4 5)
+;;=> [1 2 3 4 5]
+
+(sorted-set [:c :a :b])
+;;=> #{:a :b :c}
+
+(defn custom-comparator :- Integer
+  \"Returns a case insensitive comparator for named objects.\"
+  [x :- INamed, y :- INamed]
+  (compare (lower-case (name x)) (lower-case (name y))))
+;;=> #'foo.bar/custom-comparator
+
+(->sorted-map :b 1 :a 2 :C 3)
+;;=> {:C 3, :a 2, :b 1}
+
+(->sorted-map-by custom-comparator :b 1 :a 2 :C 3)
+;;=> {:a 2, :b 1, :C 3}
+
+
+;;; using empty collections
+
+(conj empty-set :a :b :c)
+;;=> #{:c :b :a}
+
+(into empty-que [1 2 3 4 5])
+;;=> #<PersistentQueue clojure.lang.PersistentQueue@1c3e4a2>
+
+(assoc (empty-sorted-map) :a 1 :b 2 :C 3)
+;;=> {:C 3, :a 1, :b 2}
+
+
+;;; using factories
+
+(->collection map-factory [:a 1] [:b 2] [:c 3])
+;;=> {:c 3, :b 2, :a 1}
+
+(collection lst-factory [1 2 3 4 5])
+;;=> (1 2 3 4 5)
+
+(->convolution (assoc sorted-map-factory :comparator custom-comparator) :a 1 :b 2 :C 3)
+;;=> {:a 1, :b 2, :C 3}
+
+(convolution sorted-map-factory [:a :b :C] [1 2 3])
+;;=> {:C 3, :a 1, :b 2}"}

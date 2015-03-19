@@ -1,0 +1,22 @@
+{nil
+ "(cons 1 nil)
+   ;;=> (1)
+
+   (cons 1 ()) ;; not idiomatic!
+   ;;=> (1)
+
+   (cons 1 (cons 2 (cons 3 nil)))
+   ;;=> (1 2 3)
+
+   (cons 1 [2 3]) ;; implicit call to seq
+   ;;=> (1 2 3)
+
+   ;;; cons does not realize lazy seqs, not even to check if the lazy seq is empty or not
+
+   (def x (cons 1 (seq (range))))
+   ;;=> #'foo.bar/x
+
+   ;;; cons objects do not support pop
+
+   (pop (cons 1 (cons 2 (cons 3 nil))))
+   ;;=> No implementation of method: :-pop of protocol: #'dunaj.coll/IStacked found for class: clojure.lang.Cons"}

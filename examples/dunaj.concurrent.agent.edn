@@ -1,0 +1,32 @@
+{nil
+ "(defn v
+  [x]
+  (nneg? x))
+;;=> #'foo.bar/v
+
+(def a (agent 0 :validator v))
+;;=> #'foo.bar/a
+
+(send! a inc)
+;;=> #<Agent@6e82b19b: 1>
+
+@a
+;;=> 1
+
+(send! a dec)
+;;=> #<Agent@6e82b19b: 0>
+
+(send! a dec) ;; validator fails the -1 result from dec
+;;=> #<Agent@6e82b19b FAILED: 0>
+
+@a
+;;=> 0
+
+(send! a inc)
+;; java.lang.RuntimeException: Agent is failed, needs restart
+
+(restart-agent! a 5)
+;;=> 5
+
+(send! a inc)
+;;=> #<Agent@5a053501: 6>"}

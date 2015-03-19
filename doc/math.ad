@@ -1,0 +1,454 @@
+Dunaj follows Clojure's design for numbers and math related
+functionalities. Focused on performance, Dunaj uses host number types
+for representing numbers, without any additional wraping.
+Moreover, dedicated functions are available that provide host
+performance, trading off precision and overflow safety.
+
+Dunaj provides multitude of math related functionalities, including:
+
+* comparison and value predicates
+  (`<<dunaj.math.api.ad#_EQ{under}{under}EQ{under},&#61;&#61;>>`,
+  `<<dunaj.math.api.ad#{under}LT{under},&#60;>>`,
+  `<<dunaj.math.api.ad#{under}GT{under},&#62;>>`,
+  `<<dunaj.math.api.ad#even{under}QMARK{under},even?>>`,
+  `<<dunaj.math.api.ad#odd{under}QMARK{under},odd?>>`,
+  `<<dunaj.math.api.ad#zero{under}QMARK{under},zero?>>`,
+  ...)
+* arithmetics and other basic functions
+  (`<<dunaj.math.api.ad#{under}PLUS{under},+>>`,
+  `<<dunaj.math.api.ad#_,&#45;>>`,
+  `<<dunaj.math.api.ad#{under}STAR{under},*>>`,
+  `<<dunaj.math.api.ad#{under}SLASH{under},/>>`,
+  `<<dunaj.math.api.ad#inc,inc>>`,
+  `<<dunaj.math.api.ad#max,max>>`,
+  `<<dunaj.math.api.ad#abs,abs>>`,
+  `<<dunaj.math.api.ad#gcd,gcd>>`,
+  `<<dunaj.math.api.ad#mod,mod>>`,
+  ...)
+* bitwise operations
+  (`<<dunaj.bit.api.ad#and,and>>`,
+  `<<dunaj.bit.api.ad#or,or>>`,
+  `<<dunaj.bit.api.ad#not,not>>`,
+  `<<dunaj.bit.api.ad#shift-left,shift-left>>`,
+  `<<dunaj.bit.api.ad#flip,flip>>`,
+  ...)
+* functions of an angle
+  (`<<dunaj.math.angle.api.ad#sin,sin>>`,
+  `<<dunaj.math.angle.api.ad#acos,acos>>`,
+  `<<dunaj.math.angle.api.ad#tanh,tanh>>`,
+  ...)
+* exponentiation and logarithms
+  (`<<dunaj.math.api.ad#pow,pow>>`,
+  `<<dunaj.math.api.ad#sqrt,sqrt>>`,
+  `<<dunaj.math.api.ad#log,log>>`,
+  `<<dunaj.math.api.ad#exp,exp>>`,
+  ...)
+* random number generators
+  (`<<dunaj.math.random.api.ad#rng,rng>>`,
+  `<<dunaj.math.random.api.ad#rand_integer,rand-integer>>`,
+  `<<dunaj.math.random.api.ad#floats,floats>>`,
+  `<<dunaj.math.random.api.ad#gaussian,gaussian>>`,
+  ...)
+* rounding and precision
+  (`<<dunaj.math.api.ad#ceil,ceil>>`,
+  `<<dunaj.math.api.ad#floor,floor>>`,
+  `<<dunaj.math.api.ad#round,round>>`,
+  `<<dunaj.math.api.ad#trunc,trunc>>`,
+  ...)
+
+.Math related namespaces
+****
+* <<dunaj.bit.api.ad#,dunaj.bit>> - Functions for bitwise manipulation
+* <<dunaj.host.int.api.ad#,dunaj.host.int>> -
+  Fast unchecked primitive int operations and constants for
+  performance critical loops
+* <<dunaj.host.number.api.ad#,dunaj.host.number>> -
+  Coercions to host number types
+* <<dunaj.math.api.ad#,dunaj.math>> - Basic math facilities
+* <<dunaj.math.angle.api.ad#,dunaj.math.angle>> -
+  Math functions of an angle, with floating point numbers
+* <<dunaj.math.precise.api.ad#,dunaj.math.precise>> -
+  Precise math with an arbitrary precision
+* <<dunaj.math.random.api.ad#,dunaj.math.random>> -
+  Random number generators
+* <<dunaj.math.unchecked.api.ad#,dunaj.math.unchecked>> -
+  Unchecked math where operations are fast but prone to overflow
+****
+
+== Types of numbers
+
+There are no built-in number types provided. Numbers in Dunaj are of
+host specific number types and are not extensible.
+
+[TIP]
+In rare cases where specific host number type is required,
+<<dunaj.host.number.api.ad#,dunaj.host.number>> namespace provides
+coercion functions to host number types.
+
+Dunaj however provides number type signatures and their respective
+predicates. Following type signatures map to one or more host
+number types:
+
+* `<<dunaj.math.api.ad#Number,Number>>` type signature and
+  `<<dunaj.math.api.ad#number{under}QMARK{under},number?>>`
+  predicate - Any number.
+* `<<dunaj.math.api.ad#Integer,Integer>>` and
+  `<<dunaj.math.api.ad#integer{under}QMARK{under},integer?>>` -
+  Integer numbers. Note that this is not a `java.lang.Integer` type.
+* `<<dunaj.math.api.ad#Decimal,Decimal>>` and
+  `<<dunaj.math.api.ad#decimal{under}QMARK{under},decimal?>>` -
+  Decimal numbers.
+* `<<dunaj.math.api.ad#Float,Float>>` and
+  `<<dunaj.math.api.ad#float{under}QMARK{under},float?>>` - Floating
+  point numbers. Note that this is not a `java.lang.Float` type.
+* `<<dunaj.math.api.ad#Rational,Rational>>` and
+  `<<dunaj.math.api.ad#rational{under}QMARK{under},rational?>>` -
+  Rational numbers.
+
+In addition, an `<<dunaj.math.spi.ad#INumerical,INumerical>>` protocol
+is provided and a `<<dunaj.math.api.ad#num,num>>` function returns
+a numerical value for objects that are not a number, but have
+a canonical numerical representation, such as instants, UUIDs and
+characters.
+
+[WARNING]
+Dunaj's `<<dunaj.math.api.ad#num,num>>` is different from Clojure
+`num` function, which is in Dunaj renamed to
+`<<dunaj.host.number.api.ad#number,number>>`.
+
+=== Syntax
+
+Dunaj follows Clojure's syntax for number literals.
+Following table compares syntax for JSON, EDN and CLJ formats:
+
+.Integers
+[options="header,autowidth",cols="<,^,^,^"]
+|===
+| | JSON | EDN | CLJ
+
+| arbitrary precision indicator | NO icon:remove[role="red"] | `N` suffix | `N` suffix
+
+| valid signs | `-` | `-` `+` |  `-` `+`
+
+| `-0` is valid | YES | YES | YES
+
+| decimal integer | YES | YES | YES
+
+| custom radix | NO icon:remove[role="red"] | NO icon:remove[role="red"] | `NNrNNNNN`
+
+| hexa integer | NO icon:remove[role="red"] | NO icon:remove[role="red"] | `0xNNNNN`, but undocumented icon:warning[role="yellow"]
+
+| octal integer | NO icon:remove[role="red"] | NO icon:remove[role="red"] | `0NNN`, but undocumented icon:warning[role="yellow"]
+|===
+
+
+.Non-integral numbers
+[options="header,autowidth",cols="<,^,^,^"]
+|===
+| | JSON | EDN | CLJ
+
+| ratios | NO icon:remove[role="red"] | NO icon:remove[role="red"] | `NN/NN`
+
+| decimals | NO icon:remove[role="red"] | `M` suffix | `M` suffix
+
+| floats | YES | YES | YES
+
+| valid signs | `-` | `-` `+` |  `-` `+`
+|===
+
+== Precise and unchecked arithmetics
+
+Following arithmetic functions have their precise and unchecked
+variants: `+`, `-`, `*`, `/`, `add`, `dec`, `inc`, `multiply`,
+`negate` and `subtract`.
+
+* Arithmetics operations specified in
+  <<dunaj.math.api.ad#,dunaj.math>> namespace do not auto-promote and
+  will throw on overflow. These functions are automatically refered
+  in Dunaj API.
+* Functions defined in
+  <<dunaj.math.precise.api.ad#,dunaj.math.precise>> are slower than
+  normal math operations, but auto-promote when needed.
+* <<dunaj.math.unchecked.api.ad#,dunaj.math.unchecked>> namespace
+  defines unchecked operations that are fast but prone to overflow.
+
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.math.unchecked :as mu]
+            [dunaj.math.precise :as mp]
+            [dunaj.host.number :as hn]))
+
+(+ java.lang.Long/MAX_VALUE 1)
+;; java.lang.ArithmeticException: integer overflow
+
+(mu/+ java.lang.Long/MAX_VALUE 1)
+;;=> -9223372036854775808
+
+(mp/+ java.lang.Long/MAX_VALUE 1)
+;;=> 9223372036854775808N
+--
+
+NOTE: `add` `subtract` and `multiply` are 2 arguments aliases of
+`+`, `-` and `*` functions and are provided for convenience.
+`negate` is a 1 argument alias of `-`.
+
+== Random numbers
+
+Dunaj defines a concept of a random number generator, which is
+a homogeneous collection recipe of random bytes. Random numbers
+are obtained by reducing given rng collection recipe.
+An `<<dunaj.math.random.spi.ad#IRngFactory,IRngFactory>>` factory
+protocol is provided for custom random number generators.
+
+The random number generator is created with the `<<rng,rng>>`
+function. Dunaj provides four rng types, each having its own rng
+factory:
+
+* `<<dunaj.math.random.api.ad#secure_rng,secure-rng>>` -
+  A thread safe secure rng with host-specific algorithm and providers.
+
+* `<<dunaj.math.random.api.ad#seedable_rng,seedable-rng>>` -
+  A thread safe rng with the ability to specify initial seed and with
+  a guarantee that the same seed yields same sequence of items in the
+  first reduction of the rng. Slower compared to other rngs.
+
+* `<<dunaj.math.random.api.ad#splittable_rng,splittable-rng>>` -
+  A non thread safe rng which is however intended for fork-join tasks,
+  as it is able to split into two separate rngs. Can be seeded with
+  same guarantees as in seedable-rng.
+
+* `<<dunaj.math.random.api.ad#thread_local_rng,thread-local-rng>>` -
+  A fast thread local rng.
+
+Collection of random bytes can be futher converted with following
+transducer returning functions:
+
+* `<<dunaj.math.random.api.ad#booleans,booleans>>` -
+  Converts into a collection of random booleans.
+
+* `<<dunaj.math.random.api.ad#floats,floats>>` -
+  Converts into a collection of random floats from the `[begin end)`
+  inteval, both of which can be `nil`.
+  Default `begin` value is `0.0` and default `end` value is `1.0`.
+
+* `<<dunaj.math.random.api.ad#gaussian,gaussian>>` -
+  Converts into a collection of random floats in normal distribution.
+
+* `<<dunaj.math.random.api.ad#integers,integers>>` -
+  Converts into a collection of random integers from the `[begin end)`
+  inteval, both of which can be `nil`. Default `begin` is set to `0`.
+
+* `<<dunaj.math.random.api.ad#sample,sample>>` -
+  Randomly filters out items with probability `prob`, a value from the
+  interval `[0.0 - 1.0]`.
+
+Additional functions `<<dunaj.math.random.api.ad#rand,rand>>`,
+`<<dunaj.math.random.api.ad#rand_integer,rand-integer>>` and
+`<<dunaj.math.random.api.ad#rand_nth,rand-nth>>` are provided
+for user convenience.
+
+== Bitwise operations
+
+Bitwise functions perform operations on individual bits of the input
+number(s). Following operations are provided:
+
+* `<<dunaj.bit.api.ad#clear,clear>>`,
+  `<<dunaj.bit.api.ad#flip,flip>>`,
+  `<<dunaj.bit.api.ad#set,set>>` and
+  `<<dunaj.bit.api.ad#test,test>>`
+* logic operators: `<<dunaj.bit.api.ad#and,and>>`,
+  `<<dunaj.bit.api.ad#and_not,and-not>>`,
+  `<<dunaj.bit.api.ad#not,not>>`,
+  `<<dunaj.bit.api.ad#or,or>>` and
+  `<<dunaj.bit.api.ad#xor,xor>>`
+* shift operators:
+  `<<dunaj.bit.api.ad#{under}LT{under}{under}LT{under},&lt;&lt;>>`,
+  `<<dunaj.bit.api.ad#{under}GT{under}{under}GT{under},&#62;&#62;>>`,
+  `<<dunaj.bit.api.ad#{under}GT{under}{under}GT{under}{under}GT{under},&#62;&#62;&#62;>>`,
+  `<<dunaj.bit.api.ad#shift_left,shift-left>>`,
+  `<<dunaj.bit.api.ad#shift_right,shift-right>>` and
+  `<<dunaj.bit.api.ad#unsigned_shift_right,unsigned-shift-right>>`,
+
+NOTE: `<<` `>>` and `>>>` are aliases of `shift-` functions and are
+provided for user convenience
+
+Functions defined in this namespace work with any integer type.
+More performant functions that work with
+<<dunaj.host.int.api.ad#Int,Int>> type (see following section)
+can be found in <<dunaj.host.int.api.ad#Bitwise,dunaj.host.int>>.
+Boolean logic functions can be found in
+<<dunaj.boolean.api.ad#Logic,dunaj.boolean>> namespace.
+
+[TIP]
+--
+You can use `<<dunaj.string.api.ad#binary,binary>>` and
+`<<dunaj.string.api.ad#hexa,hexa>>` functions that return
+binary and hexadecimal string representation of input number.
+
+When using numeric constants, remember that `CLJ` format supports
+hexadecimal and binary notations for integer literals.
+It will make your code more readable.
+
+[source,clojure,linenums]
+----
+(binary (bit/and 2r10110 2r11011))
+;;=> \"00010010\"
+
+(hexa (bit/and 0x0F0 0x1BC))
+;;=> \"0x00B0\"
+----
+--
+
+[NOTE]
+--
+Prefer aliasing this namespace to refering its functions.
+
+[source,clojure,linenums]
+----
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.bit :as bit]))
+
+(def ALL_OPTS
+  (bit/or java.nio.channels.SelectionKey/OP_READ
+          java.nio.channels.SelectionKey/OP_WRITE
+          java.nio.channels.SelectionKey/OP_ACCEPT
+          java.nio.channels.SelectionKey/OP_CONNECT))
+----
+--
+
+== Handling primitive number types
+
+Under JVM, Clojure chose to use `Long` as a default type for
+integers.
+This simplifies many things, but there are times where it is
+better to directly support an `Integer` type, as JDK mainly uses
+`int` for passing integer values.
+For those rare cases, Dunaj provides a dedicated namespace called
+<<dunaj.host.int.api.ad#,dunaj.host.int>> that implements macros for
+working with `int` values without unnecessary promoting or boxing.
+Following functionalities are available:
+
+* An `<<dunaj.host.int.api.ad#Int,Int>>` type,
+  `<<dunaj.host.int.api.ad#iint,iint>>` constructor, and value
+  predicates (e.g.
+  `<<dunaj.host.int.api.ad#izero{under}QMARK{under},izero?>>`,
+  `<<dunaj.host.int.api.ad#ineg{under}QMARK{under},ineg?>>` and
+  `<<dunaj.host.int.api.ad#iodd{under}QMARK{under},iodd?>>`)
+* Macro returning common int constants, including ASCII codes
+  (as Clojure automatically compiles integer literals and constants
+  as longs)
+* `<<dunaj.host.int.api.ad#iloop,iloop>>` macro for loops that do not
+  promote ints to longs
+* Basic math facilities for working with ints
+* Bitwise manipulation operations on top of ints
+
+[NOTE]
+Names of all vars provided by
+<<dunaj.host.int.api.ad#,dunaj.host.int>> namespace are prefixed
+with the small letter `i`. Numerics constants are implemented as
+macros and must be unintuitively enclosed in parens.
+
+.Example of using array manager and dunaj.host.int namespace
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require
+   [dunaj.host :refer [ArrayManager]]
+   [dunaj.host.array :refer [array array-manager-from]]
+   [dunaj.host.int :refer [Int iint iloop i== iinc iadd imul i0 i1 i31]]))
+
+(defn array-hash :- Int
+  "Compute host hash code for an array section."
+  [am :- ArrayManager, arr :- Array, begin :- Int, end :- Int]
+  (iloop [i (iint begin), ret (i1)]
+    (if (i== i end)
+      ret
+      (let [v (.get am arr i)]
+        (recur
+         (iinc i)
+         (iadd (if (nil? v) (i0) (.hashCode ^java.lang.Object v))
+               (imul (i31) ret)))))))
+;;=> #'foo.bar/array-hash
+
+(def arr (array [0 1 2 3 4 5 6 7 8 9]))
+;;=> #'foo.bar/arr
+
+(.hashCode [5 6 7 8])
+;;=> 1078467
+
+(array-hash (array-manager-from arr) arr 5 9)
+;;=> 1078467
+--
+
+=== Elimination of autoboxing
+
+Clojure compiles functions into host classes that by default treat
+input arguments and the return value as instances of
+`java.lang.Object`.
+This can be customized by specifying type hints. However, primitive
+types require special handling, and due to the combinatorial
+explosion, not all combinations of primitive types can be supported.
+Clojure supports arbitrary combinations of `java.lang.Object` with 2
+primitive types (`long` and `double`), and only up to 4 input
+arguments.
+
+Dunaj adds support for other combinations of primitive types (and a
+non-primitive `java.lang.Object`):
+
+* 0 or 1 arity functions have full support for primitives
+* 2 and 3 arity functions are supported when all input arguments are
+  of a same type. Return type can be any primitive or
+  `java.lang.Object`.
+* additional 2 and 3 arity functions are supported when first argument
+  is `java.lang.Object` and the rest of arguments are of a same type
+
+Dunaj further simplifies the process of creating functions that
+support primitive types. Type signatures automatically emit primitive
+type hints and only for cases where given combination of primitive
+types is allowed.
+
+NOTE: A special type signature
+`<<dunaj.type.api.ad#NotPrimitive,NotPrimitive>>` is provided for
+cases where primitive types are not desirable.
+
+NOTE: `<<dunaj.dev.api.ad#pt,pt>>` macro returns keyword based on type
+of argument, and is used to determine whether value is of primitive
+type or not.
+
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.host.number :refer [byte]]
+            [dunaj.host.int :refer [Int iadd iint]]))
+
+(defn foo
+  [x]
+  x)
+
+(pt (foo 4))
+;;=> :object
+
+(defn foo+ :- java.lang.Byte
+  [x :- Int, y :- Int]
+  (byte (iadd x y)))
+
+(pt (foo+ 40 2))
+;;=> :byte
+
+(pt (foo+ 400 2))
+;; java.lang.IllegalArgumentException: Value out of range for byte: 402
+
+;; following combination of primitive types is not supported,
+;; Dunaj emits non-primitive type hints
+(defn foo++ :- java.lang.Byte
+  [x :- Int, y :- Any]
+  (byte (iadd x (iint y))))
+
+(pt (foo++ 40 2))
+;;=> :object
+--

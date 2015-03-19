@@ -1,0 +1,13 @@
+{lazy-seq->set
+ "(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.coll.lazy-seq-set :refer [lazy-seq->set]]))
+
+(lazy-seq->set [:a :b :c])
+;;=> #{:a :b :c}
+
+(def m (lazy-seq->set (range)))
+;;=> #'foo.bar/m
+
+(get m 61)
+;;=> 61"}

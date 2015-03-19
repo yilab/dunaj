@@ -1,0 +1,45 @@
+{nil
+ ";;; CLJ format provides syntax for maps. HAMT maps are used only for larger maps.
+
+   {:a 1 :b 2 :c 3}
+
+   ;;; convenience functions for maps
+
+   (->map :a 1 :b 2 :c 3)
+   ;;=> {:c 3, :b 2, :a 1}
+
+   (zipmap [:a :b :c] [1 2 3])
+   ;;=> {:c 3, :b 2, :a 1}
+
+   ;;; Using empty-map
+
+   (assoc empty-map :a 1 :b 2 :c 3)
+   ;;=> {:c 3, :b 2, :a 1}
+
+   (conj empty-map [:a 1] [:b 2] [:c 3])
+   ;;=> {:c 3, :b 2, :a 1}
+
+   (into empty-map [[:a 1] [:b 2] [:c 3]])
+   ;;=> {:c 3, :b 2, :a 1}
+
+   ;;; using {} has the same effect as using empty-map
+
+   (assoc {} :a 1 :b 2 :c 3)
+   ;;=> {:c 3, :b 2, :a 1}"
+ hamt-map-factory
+ "(ns foo.bar
+     (:api dunaj)
+     (:require [dunaj.coll :refer [->collection collection ->convolution convolution]]
+               [dunaj.coll.hamt-map :refer [hamt-map-factory]]))
+
+   (->collection hamt-map-factory [:a 1] [:b 2] [:c 3])
+   ;;=> {:c 3, :b 2, :a 1}
+
+   (collection hamt-map-factory [[:a 1] [:b 2] [:c 3]])
+   ;;=> {:c 3, :b 2, :a 1}
+
+   (->convolution hamt-map-factory :a 1 :b 2 :c 3)
+   ;;=> {:c 3, :b 2, :a 1}
+
+   (convolution hamt-map-factory [:a :b :c] [1 2 3])
+   ;;=> {:c 3, :b 2, :a 1}"}

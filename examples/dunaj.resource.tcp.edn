@@ -1,0 +1,94 @@
+{nil
+ ["(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.concurrent.thread :refer [sleep]]
+            [dunaj.resource.tcp :refer [tcp]]
+            [dunaj.repl :refer [pst]]))
+
+(with-io-scope
+  (let [r (acquire! (tcp nil
+                         :local-port 43214
+                         :remote-port 43214
+                         :reuse? true
+                         :remote-address \"localhost\"))]
+    (println! (config r))
+    (write! r [-1 -2 -3 -4])
+    (future
+      (println! \"monitor enter\")
+      (io!
+       (try
+         (dored [x (read! r)] (println! \"received\" x))
+         (catch java.nio.channels.AsynchronousCloseException e
+           (println! \"monitor exit\"))
+         (catch java.lang.Exception e
+           (println! \"exception in monitor \" (pst e))))))
+    (sleep 300)))
+;; {:uri #uri \"tcp://0.0.0.0:43214@localhost:43214?reuse=true\" :remote-address localhost :remote-port 43214 :local-address nil :local-port 43214 :batch-size nil :non-blocking? nil :keep-alive? false :in-buffer-size nil :out-buffer-size nil :linger nil :no-delay? false :reuse? true :selector-provider #<EPollSelectorProvider sun.nio.ch.EPollSelectorProvider@60efaefc>}
+;; monitor enter
+;; received -1
+;; received -2
+;; received -3
+;; received -4
+;; monitor exit
+;;=> nil"
+  "(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.concurrent.thread :refer [sleep]]
+            [dunaj.resource :refer [grab-scope release-scope!]]
+            [dunaj.resource.tcp :refer [tcp tcp-server accept!]]
+            [dunaj.repl :refer [pst]]))
+
+(with-io-scope
+    (let [s (acquire! (tcp-server nil
+                                  :local-port 43215
+                                  :reuse? true
+                                  :local-address \"localhost\"))]
+      (future
+        (println! \"monitor enter\")
+        (io!
+         (try
+           (while true
+             (let [sc (accept! s)]
+               (println! \"connection accepted\")
+               (dored [x (read! sc)] (println! \"received\" x))
+               (println! \"connection end\")))
+           (catch java.nio.channels.AsynchronousCloseException e
+             (println! \"monitor exit\"))
+           (catch java.lang.Exception e
+             (println! \"exception in monitor\") (pst e)))))
+
+      (let [[c s]
+            (->> (resource \"tcp://localhost:43215\")
+                 acquire!
+                 grab-scope)]
+        (write! c [-1 -2 -3 -4])
+        (write! c [-5 -6 -7])
+        (release-scope! s))
+
+      (let [[c s]
+            (->> (resource \"tcp://localhost:43215\")
+                 acquire!
+                 grab-scope)]
+        (write! c [0 1 2 4 5])
+        (release-scope! s))
+
+      (sleep 300)))
+;; monitor enter
+;; connection accepted
+;; received -1
+;; received -2
+;; received -3
+;; received -4
+;; received -5
+;; received -6
+;; received -7
+;; connection end
+;; connection accepted
+;; received 0
+;; received 1
+;; received 2
+;; received 4
+;; received 5
+;; connection end
+;; monitor exit
+;;=> nil"]}

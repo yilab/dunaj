@@ -1,0 +1,430 @@
+Most applications perform some file and networking I/O.
+Clojure leaves this domain largerly uncovered and advises users to use
+host facilities instead. Dunaj attempts to cover this realm with
+an extensive and powerful set of features dedicated to computer and
+network resources.
+
+Goals of this experiment are as follows:
+
+* Design and implement the concept of resource scopes
+* Develop facilities for implementers of computer and
+  network resources
+* Create abstractions for basic resource functionalities and
+  integrate them with the rest of core API, mainly with collections
+  and transducers
+* Provide implementation for widely used resources
+* Devise abstraction for composing resources into 'systems'
+
+A *computer resource*, or system resource, is resource of limited
+availability within a computer system. Computer resource and
+services it provides can be used by computer processes running
+in the respective computer system.
+Examples of computer resources include a file or a network socket.
+A *network resource* is a resource accessible within a computer
+network. Some network resources provide services that perform one
+or more functions as a result of a message received over the network
+from a service consumer.
+Examples of network resources include weather web service,
+database management system or a web page.
+
+== Scopes
+
+Because resources are of limited availability, computer
+process needs to acquire resource before it can use it.
+More importantly, computer process have to release acquired
+resources as soon as they are no longer needed.
+
+Just like garbage collector automatically manages the contents of
+program's allocated heap memory, *scope manages the lifetime of
+resources* acquired within that scope. User acquires resource
+explicitly by calling
+`acquire!` function, which
+accepts factory object that implements
+`IAcquirableFactory`
+protocol. An acquired resource is a stateful object that implements
+`IReleasable` protocol and is
+always acquired and released within a scope (there is no explicit
+resource release function in Dunaj!).
+
+NOTE: Dunaj's implementation is heavily inspired by Clojure's
+http://dev.clojure.org/display/design/Resource+Scopes[feature page
+on resources and scopes].
+
+Scopes are created explicitly with
+`with-scope` macro. Resources
+are automatically released at the end of the scope in which they were
+created. Additional scope features are provided for explicit scope
+management. This includes
+`grab-scope`,
+`scope-push!` and
+`release-scope!`
+functions. Scopes can be merged, may reach into child threads
+and the release process can be configured to support timeouts and
+cancellation policies.
+
+[source,clojure,linesnum]
+--
+(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource :refer [size]]))
+
+(with-scope
+  (size (acquire! (file "src/clj/dunaj/resource.clj"))))
+;;=> 31800
+--
+
+== Resource operations
+
+Primary operations that are supported by most resources are the
+operations for reading and writing.
+`read!` is a function that takes
+a resource and returns the collection recipe that reads data from
+resource when reduced. As the reduction of such collection recipe
+has side effects and will most likely produce different results each
+time `reduce` is called, *code that performs such reduction
+must be called within an `io!` block.*
+
+There are some resources, such as files, that can be read in an
+immutable fashion. These resources can be also read with a
+`read` function,
+which guarantees that the returned collection recipe will behave as
+an immutable collection.
+
+[source,clojure,linesnum]
+--
+(def v
+  (with-scope
+    (vec (read (resource "http://md5.jsontest.com/?text=Dunaj")))))
+;;=> #'foo.baz/v
+
+v
+;;=> [123 10 32 32 32 34 109 100 53 34 58 32 34 98 52 99 53 98 54 53 97 50 55 57 98 100 49 97 51 57 49 51 55 49 50 100 57 55 97 55 52 55 50 53 54 34 44 10 32 32 32 34 111 114 105 103 105 110 97 108 34 58 32 34 68 117 110 97 106 34 10 125 10]
+
+(parse-whole json (parse utf-8 v))
+;;=> {"md5" "b4c5b65a279bd1a3913712d97a747256", "original" "Dunaj"}
+--
+
+NOTE: As reading of most resources produces a sequence of primitive
+bytes, collection recipe returned by `read!` or `read` will most
+likely support batched reduction and *will offer performance on par
+with the host.*
+
+Writing to the resource is performed with a
+`write!` function, which takes
+a resource and a collection recipe that contains data to be written.
+Number of sucessfully written items is returned.
+For most resources, `write!` will perform a batched reduction
+to ensure the most effective writing. `write!` also take an optional
+transducer that can be used to process the data before is it written.
+
+IMPORTANT: Depending on the resource's configuration, reading or
+writing may block. Some resources support a non-blocking mode, where
+a postponed object is returned in case the reading/writing can not
+be immediatelly completed.
+
+Other functionalities available for resources include:
+
+* `control!` for managing
+  resource's controllable state
+* `status` for querying
+  resource's status
+* `request!` for resources
+  that work in a request-response mode
+* `flush!`,
+  `position`,
+  `size`,
+  `truncate!` and
+  others
+
+Resources with composite bands implement classic collection
+protocols (`IIndexed`, `ILookup`, `ICounted`). Resources where
+individuals items can be sent/received implement `ISourcePort`
+and `ITargetPort`. If resource contains a single value, it can
+implement `IReference` or `IBlockingReference`.
+Resources can also implement custom error handling.
+
+=== Convenience functions
+
+A number of convenience functions are provided for acquiring, reading
+and writing.
+
+* `resource` uses a list of
+  registered resource types to determine correct type of resource
+  based on its URI scheme
+* `exchange!`,
+  `slurp` and
+  `spit!` for streamlined
+  reading/writing
+* `format` and
+  `transform` for the integration
+  with transducers and data formatters
+
+[source,clojure,linesnum]
+--
+;; matches uri scheme to the list of registered resource factories
+(resource "http://example.com")
+;;=> #dunaj.resource.http.HttpResourceFactory{:uri "http://example.com", :proxy nil, :secure? false, :allow-ui? nil, :timeout nil, :use-caches? nil, :follow? nil, :request-properties nil, :request-method nil, :chunked-streaming nil, :hostname-verifier nil, :ssl-context nil, :batch-size nil}
+
+;; file resource is used when no scheme is provided
+(resource "file.txt")
+;;=> #dunaj.resource.file.FileResourceFactory{:uri "file.txt", :mode [:read :write :create], :batch-size nil, :file-system nil, :working-directory nil}
+
+;; another example, a client tcp connection
+(resource "tcp://localhost:8081")
+;;=> #dunaj.resource.tcp.TcpResourceFactory{:uri "tcp://localhost:8081", :remote-address nil, :remote-port nil, :local-address nil, :local-port nil, :batch-size nil, :non-blocking? nil, :keep-alive? false, :in-buffer-size nil, :out-buffer-size nil, :linger nil, :no-delay? false, :reuse? nil, :selector-provider nil}
+--
+
+[source,clojure,linesnum]
+--
+(with-io-scope
+  (->> (resource "http://example.com")
+       acquire!
+       (format utf-8)
+       read!
+       (take 50)
+       str))
+;;=> "<!doctype html>\n<html>\n<head>\n    <title>Example D"
+
+;; using slurp convenience function
+(with-scope (str (take 50 (slurp "http://example.com"))))
+;;=> "<!doctype html>\n<html>\n<head>\n    <title>Example D"
+--
+
+== Built-in resources
+
+
+=== File
+
+Dunaj provides several built-in implementations for file related
+resources:
+
+* `file` for classic files,
+  registered under `file` scheme and also used when no scheme
+  is provided. In addition to readable and writable, files are
+  flushable, seekable and truncatable.
+* `classpath` for classpath
+  resources. Registered under `cp` scheme.
+* `input-stream` and
+  `output-stream` for
+  resources backed by host streams.
+* `reader` and
+  `writer` for
+  resources backed by host reader or writer.
+
+=== Non-blocking IO
+
+Several Dunaj's resources support optional non-blocking mode, in which
+the reads and writes from a resource may return a postponed object
+when the operation cannot be completed immediatelly.
+
+A special resource called
+`selector` is available
+for programs that want to wait for a non-blocking resource to be
+available for further writing or reading. Non-blocking resources may
+`register!`
+themselves within a selector. Program can then wait for next available
+resource with
+`select` or
+`select-now` functions.
+
+[source,clojure,linesnum]
+--
+(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource.pipe :refer [pipe-factory]]
+            [dunaj.concurrent.thread :refer [sleep]]))
+
+;; non-blocking with selector
+(with-io-scope
+  (let [[sink1 source1] (acquire! pipe-factory :non-blocking? true)
+        [sink2 source2] (acquire! pipe-factory :non-blocking? true)
+        sel (acquire! (selector))
+        dumpf #(dored [x (read! (:resource %))] (println! "got" x))
+        rf (fn [ret val] (println! "resource is ready" val) (dumpf val) ret)]
+    ;; register non-blocking resources
+    (register! sel source1 :all)
+    (register! sel source2 :all)
+    ;; poll selector in a different thread
+    (thread
+     (io!
+      (loop [x (reduce rf nil (read! sel))]
+        (if (postponed? x)
+          (do (println! "resources ready:" (select sel))
+              (recur (unsafe-advance! x)))
+          (println! "end")))))
+    ;; send data to resources
+    (write! sink1 [1 2 3])
+    (write! sink2 [4 5 6])
+    (sleep 1000)
+    (write! sink2 [7 8 9])
+    (sleep 1000)))
+;; resources ready: 2
+;; resource is ready {:ready (:read) :resource #<SourceResource dunaj.resource.pipe.SourceResource@7e9013ff>}
+;; got 1
+;; got 2
+;; got 3
+;; resource is ready {:ready (:read) :resource #<SourceResource dunaj.resource.pipe.SourceResource@3b928249>}
+;; got 4
+;; got 5
+;; got 6
+;; resources ready: 1
+;; resource is ready {:ready (:read) :resource #<SourceResource dunaj.resource.pipe.SourceResource@3b928249>}
+;; got 7
+;; got 8
+;; got 9
+;; resources ready: 0
+;; end
+;;=> nil
+--
+
+=== Networking
+
+Dunaj provides resource for sending and fetching data through
+`http` (or
+`https`) with very basic
+functionalities.
+
+.HTTP POST example, showing reading, writing and querying resource's status
+[source,clojure,linesnum]
+--
+(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource :refer [status]]
+            [dunaj.concurrent.thread :refer [sleep]]))
+
+(with-io-scope
+  (let [r (http "http://httpbin.org/post")
+        c (acquire! (assoc r :request-method :post))
+        fc (format utf-8 c)]
+    (println! "config" (config c))
+    (println! "sent" (write! fc "key1=val1&key2=val2&key1=val3"))
+    (println! "response" (str (read! fc)))
+    (println! "status" @(status c))
+    (sleep 100)))
+;; config {:uri #uri "http://httpbin.org/post" :proxy nil :secure? false :allow-ui? nil :timeout nil :use-caches? nil :follow? nil :request-properties nil :request-method :post :chunked-streaming nil :hostname-verifier nil :ssl-context nil :batch-size nil}
+;; sent 29
+;; response {
+;;   "args": {},
+;;   "data": "",
+;;   "files": {},
+;;   "form": {
+;;     "key1": [
+;;       "val1",
+;;       "val3"
+;;     ],
+;;     "key2": "val2"
+;;   },
+;;   "headers": {
+;;     "Accept": "text/html, image/gif, image/jpeg, *"; q=.2, */*; q=.2",
+;;     Connect-Time": "2",
+;;     "Connection": "close",
+;;     "Content-Length": "29",
+;;     "Content-Type": "application/x-www-form-urlencoded",
+;;     "Host": "httpbin.org",
+;;     "Total-Route-Time": "0",
+;;     "User-Agent": "Java/1.8.0_25",
+;;     "Via": "1.1 vegur",
+;;     "X-Request-Id": "c550e93d-a79d-47c2-aab9-d0f9c22c663d"
+;;   },
+;;   "json": null,
+;;   "url": "http://httpbin.org/post"
+;; }
+;; status {:proxy? false :response-message OK :response-code 200 :request-method POST :headers {Content-Type application/json Via 1.1 vegur Date Wed, 03 Dec 2014 12:29:47 GMT Content-Length 627 Connection keep-alive Access-Control-Allow-Credentials true Access-Control-Allow-Origin * Server gunicorn/18.0 nil HTTP/1.1 200 OK}}
+;;=> nil
+--
+
+In addition to `http`, Dunaj also implements basic low level
+networking protocols, which can be used in third party networking
+libraries or clients:
+
+* `udp` resource, supporting
+  connected and connectionless mode, broadcasting and multicasting
+* `tcp` resource, supporting
+  tcp clients and servers.
+* `secure` resource,
+  implementing TLS protocol. This resource wraps
+  `javax.net.ssl.SSLEngine` and provides Dunaj's semantics.
+
+.Using secure resource with tcp for communication
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.concurrent.thread :refer [sleep]]
+            [dunaj.resource.tcp :refer [tcp finish-connect!]]
+            [dunaj.resource.selector :refer [selector register!]]
+            [dunaj.resource.secure :refer [secure]]))
+
+;; non-blocking
+(with-io-scope
+  (let [uri "tcp://gotofail.com:443"
+        c (acquire! (tcp uri :non-blocking? true))
+        s (acquire! (secure c))
+        gm "GET / HTTP/1.0\r\nFrom: example@example.com\r\nUser-Agent: Mozilla/5.0 Gecko/20100101 Firefox/36.0\r\n\r\n"
+        rf #(println! "got" (str (take 350 (parse utf-8 %2))))
+        sel (acquire! (selector))]
+    ;; wait until connection is established
+    (register! sel c [:connect])
+    (select sel)
+    (finish-connect! c)
+    ;; disable thread locality of a secure resource
+    (pass! s nil)
+    ;; send GET request
+    (println! "writing" (write! s (print utf-8 gm)))
+    ;; handle selector and print response in a different thread
+    (register! sel c [:read])
+    (thread
+     (io!
+      (try
+        (loop [r (reduce-batched nil nil rf nil (read! s))]
+          (println! ".")
+          (when (postponed? r)
+            (select sel 500)
+            (recur (unsafe-advance! r))))
+        (println! "EOF")
+        (catch java.lang.Exception e (println! "R exception:" e)))))
+    (sleep 5000)))
+;; writing #<Postponed@16c42c7c: 98>
+;; .
+;; .
+;; .
+;; .
+;; .
+;; .
+;; .
+;; .
+;; .
+;; got HTTP/1.1 200 OK
+;; Server: nginx/1.4.6 (Ubuntu)
+;; Date: Mon, 08 Dec 2014 21:39:51 GMT
+;; Content-Type: text/html
+;; Content-Length: 8618
+;; Last-Modified: Mon, 20 Oct 2014 20:06:13 GMT
+;; Connection: close
+;; ETag: "54456b35-21ab"
+;; Accept-Ranges: bytes
+;;
+;; <!DOCTYPE html>
+;; <html><head><meta charset=utf-8><title>goto fail;</title>
+;; <link rel="icon" href="data:";base
+;; .
+;; EOF
+;;=> nil
+--
+
+== System
+
+System is a Dunaj's replacement for Stuart Sierra's
+https://github.com/stuartsierra/component[component library].
+Utilizing scopes and resources, Dunaj's system implementation focuses
+on managing dependencies and acquiring resources in correct order.
+
+NOTE: It is Dunaj's conscious decision to simplify the role of
+a system and to only support fail-fast mechanism. In Dunaj,
+exceptions and restarts have to be handled higher in the hierarchy.
+
+Dunaj provides `system`,
+`start!`,
+`assoc-deps` and
+`deps` functions for creating and
+starting systems.

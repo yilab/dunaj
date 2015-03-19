@@ -1,0 +1,24 @@
+Dunaj was created to test 10 large experiments that bring significant
+changes to the Clojure language. As there is a substantial number of
+additions and changes, this guide gradually introduces all of
+Dunaj's distinct features.
+
+This guide is intended for existing Clojure developers and it
+describes in detail each Dunaj experiment. Every part states the
+motivation behind the experiment, introduces changes and additions
+to the language and demonstrates its intended use.
+
+* Experiment 1 - <<day1.ad#,Deconstructing core API>>
+* Experiment 2 - <<day2.ad#,Optional type signatures>>
+* Experiment 3 - <<day3.ad#,Protocols first>>
+* Experiment 4 - <<day4.ad#,Towards simpler API>>
+* Experiment 5 - <<day5.ad#,Reducers first>>
+* Experiment 6 - <<day6.ad#,Enabling host performance>>
+* Experiment 7 - <<day7.ad#,Data formatters>>
+* Experiment 8 - <<day8.ad#,Computer and network resources>>
+* Experiment 9 - <<day9.ad#,Improving Math Facilities>>
+* Experiment 10 - <<day10.ad#,Captivating documentation>>
+
+++++
+<div id="blo"></div>
+++++

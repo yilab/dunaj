@@ -1,0 +1,224 @@
+Second Dunaj experiment adds support for optional type signatures that
+can be used to annotate functions, protocol methods, type fields and
+local bindings. These type signatures are then used to automatically
+generate host type hints. At run-time, type signatures are stored
+in vars' metadata, available for third party type checking, data
+validation and documentation tools.
+
+.Background
+****
+In Clojure, type declarations can serve multiple purposes:
+
+. Conveying type information to other developers by explicit formal
+  documentation of var's data type or function's type signature.
+. Enabling host optimizations by providing type information
+  to the compiler.
+. Improving safety and verifiability by run-time data validation
+  of supplied arguments and computed values.
+. Static type-checking by read-time or compile-time code analysis.
+
+Clojure itself provides facilities for host optimizations (2) through
+type hints. Run-time data validation (3) is partially supported with
+`:pre` and `:post` assertion functions. Static type-checking is out
+of Clojure's scope. Documenting type declarations is limited
+as type hints are host specific and preconditions are implemented
+with arbitrary predicate functions.
+
+A library called https://github.com/clojure/core.typed[core.typed]
+brings optional type system to the Clojure through gradual typing.
+Its goal is to add static type-checking (4) to the Clojure without
+alienating Clojure's principles and idioms. Focusing on the
+feature complete and sound type system, core.typed does not aim to
+support automatic generation of type hints or run time data
+validation. Its potential for documentation purposes (1) is evident,
+but there is currently a lack of documentation tools that would
+utilize this capability.
+
+https://github.com/Prismatic/schema[Schema] is a library for
+run-time data validation and declarative data description.
+It is focused on being a practical library that can be used
+in real world projects. The aim of this library is to provide means
+for an explicit documentation (1) and run-time data validation (3).
+Moreover, host type hints are automatically generated (2).
+As data is validated at run-time, Schema's type signatures incur a
+run-time performance penalty when used.
+****
+
+Goals of the second Dunaj experiment are as follows:
+
+* Provide developers with a means to document type signatures for
+  functions, protocol methods, `let`-like bindings and deftype fields.
+* Automatically generate type hints from provided type signatures,
+  including primitive ones.
+* Open up type signatures for custom extensions and use in third
+  party data validation and type checking tools.
+
+Dunaj aims to decomplect type declarations from type checking tools.
+It provides conventions and syntax extensions for defining type
+signatures, while leaving their exact interpretation to other
+libraries. Existing protocols, types and host classes can all be used
+as type declarations. By generating type hints automatically, users
+do not have to write types twice (first time as a type signature and
+second time as a type hint). Specifying type signatures does not
+produce any run-time overhead, as all processing is done at a macro
+expansion time.
+
+NOTE: `<<dunaj.dev.api.ad#pt,pt>>` macro returns keyword based on type
+of argument, and is used to determine whether value is of primitive
+type or not.
+
+.Introducing type signatures
+[source,clojure,linesnum]
+--
+(ns foo.bar
+  (:api dunaj))
+
+(warn-on-reflection!)
+
+;; Following definition leads to reflection and boxed return type
+(defn firstChar
+  [x]
+  (.charAt x 0))
+;; Reflection warning, .../foo/bar.clj:8:3 - call to method charAt can't be resolved (target class is unknown).
+;;=> #'foo.bar/firstChar
+
+(pt (firstChar "foo"))
+;;=> :object
+
+;; By using type signatures, both reflection and forced boxing is eliminated
+(defn firstChar* :- Char
+  [x :- String]
+  (.charAt x 0))
+;;=> #'foo.bar/firstChar*
+
+(pt (firstChar* "foo"))
+;; :char
+--
+
+== Built-in type signatures
+
+Values (`nil`, `true`, `42`), host classes, interfaces
+(`java.util.Map`, `java.io.InputStream`), protocols and deftypes
+(`ICounted`, `Integer`, `Thread`) can all be used as a type
+declaration. Moreover, Dunaj defines following basic type signatures:
+
+* `Any`, `AnyFn` - represents any type or any function, respectively
+* `Fn` - declaring functions. `Fn` takes one or more vectors
+  representing function type signatures, where return type is the
+  first item of a respective vector.
+* `U` for the union of types and `I` for type intersection
+* `Maybe` for optional values, `Va` for variadic arguments
+* `[]`, `{}` and `#{}` represents nil or any (including empty)
+  collection, map or set, respectively.
+
+.Usage example
+[source,clojure,linesnum]
+--
+(defn next :- (Maybe ISeq)
+  "Returns a seq of the items after the first. Calls seq on
+  coll. If there are no more items, returns nil."
+  [coll :- []]
+  (seq (rest coll)))
+--
+
+Full list of built-in type signatures can be found in a
+`<<dunaj.type.api.ad#,dunaj.type>>` namespace.
+`<<dunaj.type.spi.ad#IHintedSignature,IHintedSignature>>` protocol
+is provided for custom type signatures that may emit host type
+hints.
+
+NOTE: Type signatures are not supported for macros
+
+== Syntactic sugar and :tsig metadata key
+
+User supplied type declarations are available in var's metadata under
+both `:tsig` (evaluated) and `:qtsig` (unevaluated) keys.
+Syntactic sugar (using `:-` keyword) for defining type signatures is
+preferred and is the only option for annotating `loop` and `let`
+bindings. Specifying type signatures for vars can also be made by
+providing `:tsig` metadata directly.
+
+.Using :tsig metadata
+[source,clojure,linesnum]
+--
+(defn add
+  "Returns sum of given numbers. (add) returns 0."
+  {:tsig (Fn [0]
+             [Number Number]
+             [Number Number (Va Number)])}
+  ([] 0)
+  ([x] x)
+  ([x & ys] (apply + x ys)))
+
+(:qtsig (meta #'add))
+;;=> (Fn [0] [Number Number] [Number Number (Va Number)])
+
+(:tsig (meta #'add))
+;;=> #dunaj.type.FnSignature{:method-sigs ([0] [java.lang.Number java.lang.Number] [java.lang.Number java.lang.Number #dunaj.type.VariadicSignature{:sig java.lang.Number}])}
+--
+
+.Using syntactic sugar
+[source,clojure,linesnum]
+--
+(defn every? :- Boolean
+  "Returns true if every item of coll satisfies pred,
+  otherwise returns false."
+  [pred :- AnyFn, coll :- []]
+  (reduce #(if (pred %2) % (reduced false)) true coll))
+
+(:qtsig (meta #'every?))
+;;=> (Fn [Boolean AnyFn []])
+
+(:tsig (meta #'every?))
+;;=> #dunaj.type.FnSignature{:method-sigs ([{:clojure.core/type true, :var #'dunaj.boolean/Boolean, :on-class java.lang.Boolean, :alias? true} #dunaj.type.FnSignature{:method-sigs nil} []])}
+--
+
+NOTE: You can omit one or more parts of a type signature. In that
+case, missing parts will be treated as annotated with `Any` signature.
+
+Both deftype fields and protocol methods can be annotated with type
+declarations. First argument in protocol methods should not be
+annotated.
+
+.Annotating protocol methods
+[source,clojure,linesnum]
+--
+(defprotocol IMutable
+  "A state protocol for mutable references."
+  (-reset! :- Any
+    "Resets the referenced value to val.
+    Returns new value. Mutates this."
+    [this val :- Any]))
+
+(defn reset! :- Any
+  "Sets the referenced value to newval without regard
+  for the current value. Returns the new value."
+  [ref :- IMutable, val :- Any]
+  (-reset! ref val))
+--
+
+.Annotating deftypes
+[source,clojure,linesnum]
+--
+(deftype Local
+  "Thread local mutable reference type."
+  [^:volatile-mutable val :- Any,
+   ^:volatile-mutable thread :- Thread]
+  IThreadLocal
+  IMutable
+  (-reset! [this newval]
+    (ensure-thread-local thread)
+    (set! val newval)
+    newval)
+  IReference
+  (-deref [this] val))
+
+(defn local :- Local
+  "Returns new reference to val, local to the given thread,
+  or to the current one, if thread is not explicitly given.
+  The returned reference can be read from any thread."
+  ([val :- Any]
+   (local val nil))
+  ([val :- Any, thread :- (Maybe Thread)]
+   (->Local val (or thread (current-thread))))
+--

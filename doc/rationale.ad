@@ -1,0 +1,48 @@
+Dunaj was created as an attempt to realize several ideas that
+require significant upfront coding and which diverge from Clojure's
+current approach and status quo. Questioning some of design decisions
+made in Clojure, Dunaj tries to achieve same goals with a slightly
+different approach.
+
+Having modern Clojure features at hand, and free from having to
+support old versions and existing application code, Dunaj has more
+freedom to test new things and can take a more liberal and fresh
+approach.
+
+Most of Dunaj is implemented as a library, with changes to Clojure
+made only when there are no other options. Dunaj's goal is to
+maintain backwards compatibility with existing Clojure code,
+libraries and tooling.
+
+Dunaj also tries to be more host agnostic. Host classes are less
+visible and less used in Dunaj, host specific functionalities are
+in separate namespaces, and new features provided by Dunaj allow to
+achieve performance more on par with host, so that there is less need
+to jump into the host language.
+
+Dunaj *pursue simplicity* by:
+
+* splitting core functionalities into multiple namespaces and
+cleaning public API from bootstraping and low level stuff
+* using protocols for all built-in abstractions and having core
+functions work on top of protocols instead of concrete types
+* formalizing concepts of factories, data formatters and resources
+
+Dunaj aims to *improve consistency*:
+
+* with more consistent naming and syntax
+* by providing syntax and basic support for type signatures
+independent on any concrete data validation and type checking tool
+* by enriching vars with documentation and IDE specific metadata
+
+Dunaj *enables host performance* with:
+
+* reducers first approach with source-aware collection recipes
+* batched reductions that allow to pass and manipulate low level
+data containers for bulk data processing
+* more primitive types for function arguments and return value
+* host array and int manipulation facilities
+
+++++
+<div id="blo"></div>
+++++

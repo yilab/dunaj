@@ -1,0 +1,43 @@
+Last Dunaj experiment aims to improve API's primary documentation and
+documentation generation facilities.
+
+Current documentation is available at project's homepage at
+http://dunaj.org[dunaj.org]. API and SPI documentation is
+automatically generated from Dunaj sources. Other parts of
+the documentation are written in AsciiDoc format and are available in
+project's repository alongside other sources.
+Everything is released under the same license as Clojure.
+
+Library used for the actual documentation generation can be used
+to generate documentation of any Clojure project, and will be released
+soon.
+
+== Annotated documentation
+
+API documentation is presented in a clear and user friendly way.
+Vars in a given namespace are grouped by their purpose into
+several categories. In addition to Var's docstring, type signatures,
+examples and see also references are provided.
+
+== IDE Support
+
+Dunaj defines special Var metadata that provide additional information
+to IDEs. With these metadata, editors can offer improved and more
+precise highlighting and indentation. IDE related metadata are as
+follows:
+
+* `:indent` - `nil`/integer/`:all` - Indent style, number of
+  arguments treated as function arguments
+* `:indent-group` - `nil`/integer - cond-like grouping of arguments
+  per line
+* `:highlight` - keyword - optional highlight group. Dunaj uses
+  `:def`, `:host`, `:flow` and `:warn`.
+* `:named` - `true`/`false`/`:optional` -
+  form's second argument is (an optional) a symbol name
+* `:let-bindings` - `true`/`false` -
+  form's second argument is a let-like binding vector
+* `:fn-params` - `true`/`false` -
+  form's second argument is a fn-like params vector
+
+Dunaj's CLJ pretty printer uses above metadata to improve
+highlighting and indentation too.

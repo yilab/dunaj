@@ -1,0 +1,35 @@
+{lazy-seq
+ "(defn number-seq-from
+  [x]
+  (lazy-seq
+   (do (println! \"processing number\" x)
+       (cons x (number-seq-from (inc x))))))
+;;=> #'foo.bar/number-seq-from
+
+(def natural-numbers (number-seq-from 0))
+;;=> #'foo.bar/natural-numbers
+
+(seq (take 10 natural-numbers))
+;; processing number 0
+;; processing number 1
+;; processing number 2
+;; processing number 3
+;; processing number 4
+;; processing number 5
+;; processing number 6
+;; processing number 7
+;; processing number 8
+;; processing number 9
+;;=> (0 1 2 3 4 5 6 7 8 9)
+
+;; when called again, no processing is done, as the results are cached
+(seq (take 10 natural-numbers))
+;;=> (0 1 2 3 4 5 6 7 8 9)
+
+(seq (take 15 natural-numbers))
+;; processing number 10
+;; processing number 11
+;; processing number 12
+;; processing number 13
+;; processing number 14
+;;=> (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14)"}

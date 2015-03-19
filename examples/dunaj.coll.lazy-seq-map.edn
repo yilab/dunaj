@@ -1,0 +1,13 @@
+{lazy-seq->map
+ "(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.coll.lazy-seq-map :refer [lazy-seq->map]]))
+
+(lazy-seq->map [:a 1 :b 2 :c 3])
+;;=> {:a 1, :b 2, :c 3}
+
+(def m (lazy-seq->map (interleave (range) (map char (range)))))
+;;=> #'foo.bar/m
+
+(get m 61)
+;;=> \\="}

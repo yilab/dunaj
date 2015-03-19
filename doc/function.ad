@@ -1,0 +1,111 @@
+Function is Dunaj's primary building block and is a first class
+object. Function object can be passed as an argument or be used as a
+return value.
+
+Dunaj provides `<<dunaj.function.api.ad#Function,Function>>` type
+for functions. Function type and other related functionalities are
+defined in <<dunaj.function.api.ad#,dunaj.function>> namespace.
+
+Function object is created with `<<dunaj.function.api.ad#fn,fn>>` and
+`<<dunaj.function.api.ad#defn,defn>>` macros.
+A `<<dunaj.function.api.ad#fn{under}QMARK{under},fn?>>` predicate is
+provided that tests whether an input argument is the instance of a
+`Function` type. Functions have following features:
+
+* can be invoked, via `<<dunaj.function.api.ad#invoke,invoke>>`,
+  `<<dunaj.function.api.ad#apply,apply>>` or simply by using special
+  evaluation rules for lists in `CLJ` format.
+* can have variable number of arguments
+* support multiple arities
+* any Function can be used as a comparator for sorting
+* support for `IMeta`
+* Functions can be passed into `IExecutor` and `ITaskExecutor`
+
+****
+*Function* - takes arguments and computes result. May have side
+effects - may have 0 or more args, may be multiarity, may be vararg
+
+*Method* - function with different behavior based on type of first
+argument - at least 1 arg, can have multiple arities, cannot be vararg
+
+*Multimethod* - function with arbitrary dispatch based on arguments -
+may have 0 or more args, no multiple arities, may be vararg
+****
+
+== Invocation
+
+Primary purpose of a function is to be invoked. Nevertheless, it is
+important to distinguish between a function, represented by a
+`Function` type, and the ability to be invoked, that is represented
+by an `<<dunaj.function.spi.ad#IInvocable,IInvocable>>` protocol.
+
+NOTE: When documentation uses the name 'function', an invocable
+object is meant. In those rare cases when only objects
+of type `Function` are required, the 'fn' or 'Function'
+(with capital F) is used.
+
+An `<<dunaj.function.api.ad#invocable{under}QMARK{under},invocable?>>`
+predicate is provided that tests whether input argument can be
+invoked.
+Many types other than functions support `IInvocable` protocol and can
+be invoked. Moreover, custom types can extend this protocol and be
+invoked like a function.
+
+IMPORTANT: Type signatures `AnyFn` and `Fn`, found in
+<<dunaj.type.api.ad#,dunaj.type>> namespace, represent any
+invocable object. Use `<<dunaj.function.api.ad#Function,Function>>`
+as a type signature to require Functions created with `defn` or `fn`.
+
+Invocable objects do not support variable number or arguments and
+cannot be passed to executors.
+List of built-in types that support `IInvocable` protocol includes:
+
+* collections that support lookup or random access
+* keywords and symbols, which perform respective key lookup
+  in a given collection
+* Vars and Refs
+
+== Predicates
+
+A predicate is a function that usually takes 1 argument and returns
+a boolean value. In Dunaj, following conventions apply to predicates:
+
+* predicate name ends with a question mark (e.g. `even?`,
+`counted?`, `homogeneous?`)
+* return type is of type `Boolean`. Prefer explicit
+`<<dunaj.type.api.ad#Predicate,Predicate>>` type signature for one
+arg predicates.
+
+Dunaj provides a convenience syntax for type and protocol predicates.
+Setting a `:predicate` metadata attribute to the (quoted) symbol will
+generate a correspondent type/protocol predicate with given name.
+
+[source,clojure,linesnum]
+--
+(defprotocol IFoo
+  "An IFoo protocol."
+  {:predicate 'foo?}
+  (-foo :- Integer [this]))
+
+(deftype Bar
+  "A Bar type."
+  {:predicate 'bar?}
+  [bar :- Integer]
+  IFoo
+  (-foo [this] bar))
+
+(defn foo :- (Maybe Integer)
+  [x :- Any]
+  (when (foo? x) (-foo x)))
+--
+
+== Conventions
+
+There are several conventions for functions:
+
+* Function names are hyphen cased and lower cased.
+* Functions that are not safe for ref transactions (or e.g. for use in
+  `<<dunaj.state.api.ad#swap{under}BANG{under},swap!>>`) have names
+  that end with an exclamation mark `!`, also called as bang.
+  This includes functions that perform I/O or change some observable
+  state.

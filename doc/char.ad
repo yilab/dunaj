@@ -1,0 +1,44 @@
+In Dunaj, a `<<dunaj.char.api.ad#Char,Char>>` type represents
+individual characters. This type directly maps to the host character
+type, without any wraping.
+
+TIP: JVM host specific: Dunaj supports primitive chars as
+function arguments and return values (subject to the number of
+arguments and combination of argument types).
+
+Character type, constructor, predicates and other related
+functionalities are defined in <<dunaj.char.api.ad#,dunaj.char>>
+namespace.
+
+Chars implement `<<dunaj.math.spi.ad#INumerical,INumerical>>`
+protocol, so that they can be used as an argument to the
+`<<dunaj.math.api.ad#num,num>>` function
+
+[source,clojure,linesnum]
+--
+(num \f)
+;;=> 102
+
+(dunaj.string/hexa (num \u0020))
+;;=> "0x0020"
+--
+
+See also <<string.ad#,strings>>.
+
+== Syntax
+
+Dunaj follows Clojure's syntax for characters. Following table
+compares syntax for JSON, EDN and CLJ formats:
+
+[options="header,autowidth",cols="<,^,^,^"]
+|===
+| | JSON | EDN | CLJ
+
+| syntax | NONE icon:remove[role="red"] | `\X` | `\X`
+
+| special characters | _N/A_ | `\newline` `\tab` `\return` `\space` | `\newline` `\tab` `\return` `\space` `\backspace` `\formfeed` 
+
+| unicode escapes | _N/A_ | `\uNNNN` | `\uNNNN`
+
+| octal escapes | _N/A_ | NO icon:remove[role="red"] | `\o0` to `\o377`
+|===

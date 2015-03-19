@@ -1,0 +1,24 @@
+{nil
+ "(ns foo.baz
+  (:api dunaj))
+
+(vec (print utf-8 \"hello world \\u03BB\"))
+;;=> [104 101 108 108 111 32 119 111 114 108 100 32 -50 -69]
+
+(def v [-16 -99 -109 -105 -16 -99 -109 -82 -16 -99 -109 -75 -16 -99 -109 -75 -16 -99 -109 -72 32 -16 -99 -108 -128 -16 -99 -109 -72 -16 -99 -109 -69 -16 -99 -109 -75 -16 -99 -109 -83])
+;;=> #'foo.baz/v
+
+(str (parse utf-8 v))
+;;=>\"𝓗𝓮𝓵𝓵𝓸 𝔀𝓸𝓻𝓵𝓭\"
+
+(vec (print utf-16 (parse utf-8 v)))
+;;=> [-2 -1 -40 53 -36 -41 -40 53 -36 -18 -40 53 -36 -11 -40 53 -36 -11 -40 53 -36 -8 0 32 -40 53 -35 0 -40 53 -36 -8 -40 53 -36 -5 -40 53 -36 -11 -40 53 -36 -19]
+
+;; write utf-8 text to file
+(with-scope
+  (write! \"out.txt\" (print utf-8 \"lorem ipsum dolor sit amet\")))
+;;=> 26
+
+;; ad-hoc charset with custom replacement
+(str (parse (assoc (charset-formatter \"ASCII\") :replacement \"!\") [104 101 108 108 111 32 119 111 114 108 100 -20]))
+;;=> \"hello world!\""}

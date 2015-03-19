@@ -1,0 +1,97 @@
+This page lists future plans for Dunaj. Github pull requests are
+welcome, but all contributors must sign
+http://clojure.org/contributing[the Clojure CA].
+
+
+=== Non goals
+
+* Improve starting time, smaller .jar builds - Due to backwards
+  compatibility with Clojure, Dunaj does not aim to provide fast
+  starting times or optimize the resulting size of a binary
+  distribution.
+
+
+=== Add tests
+
+Currently, Dunaj contains no tests and no effort was made to support
+existing Clojure tests either. This is exclusively due to the lack
+of resources such as time. A facilities for generative testing should
+be added into Dunaj too.
+
+
+=== Improve or add new features
+
+* Support for JVM 7
+* Support more hosts (Javascript, .NET, ...)
+* Support other OSs besides Linux
+* Check binary compatibility with Clojure
+* Reader conditionals for CLJ parser
+* Type signatures support for CLJ pretty printer
+* Helpful error messages
+* More API presets (e.g. for unchecked or host int math)
+* Add more data formatters (parsers/printers), including binary
+  codecs. (e.g. XML, Transit, Fressian)
+* Add more resource types, mainly for distributed queues, databases
+  and network protocols.
+* Add new collection types, mainly AVL trees, Ctries, Bags and
+  Multimaps
+* Review IDE-related metadata in vars (:indent, :highlight, etc.)
+* Additional features are planned for following namespaces:
+  `<<dunaj.boolean.api.ad#,dunaj.boolean>>`,
+  `<<dunaj.coll.rbt-sorted-map.api.ad#,dunaj.coll.rbt-sorted-map>>`,
+  `<<dunaj.coll.rbt-sorted-set.api.ad#,dunaj.coll.rbt-sorted-set>>`,
+  `<<dunaj.coll.recipe.api.ad#,dunaj.coll.recipe>>`
+  `<<dunaj.compare.api.ad#,dunaj.compare>>`,
+  `<<dunaj.concurrent.port.api.ad#,dunaj.concurrent.port>>`,
+  `<<dunaj.error.api.ad#,dunaj.error>>`,
+  `<<dunaj.math.api.ad#,dunaj.math>>`,
+  `<<dunaj.time.api.ad#,dunaj.time>>`,
+  `<<dunaj.type.api.ad#,dunaj.type>>`
+* Review the implementation of
+  `<<dunaj.coll.recipe.api.ad#,dunaj.coll.recipe>>`
+
+
+=== Documentation improvements
+
+* Dunaj specification needs significant improvements
+* Existing documentation needs proofreading
+* Following namespaces badly need to improve their documentation:
+  `<<dunaj.concurrent.port.api.api.ad#,dunaj.concurrent.port>>`,
+  `<<dunaj.function.api.ad#,dunaj.function>>`,
+  `<<dunaj.host.api.ad#,dunaj.host>>`,
+  `<<dunaj.lib.api.ad#,dunaj.lib>>`,
+  `<<dunaj.poly.api.ad#,dunaj.poly>>`,
+  `<<dunaj.state.api.ad#,dunaj.state>>`,
+  `<<dunaj.var.api.ad#,dunaj.var>>`,
+  `<<dunaj.threading.last.api.ad#,dunaj.threading.last>>`,
+  `<<dunaj.threading.second.api.ad#,dunaj.threading.second>>`
+
+* Less serious, but still in need of documentation improvement:
+  `<<dunaj.coll.util.api.ad#,dunaj.coll.util>>`,
+  `<<dunaj.error.api.ad#,dunaj.error>>`,
+  `<<dunaj.flow.api.ad#,dunaj.flow>>`,
+  `<<dunaj.format.parser.api.ad#,dunaj.format.parser>>`,
+  `<<dunaj.format.printer.api.ad#,dunaj.format.printer>>`,
+  `<<dunaj.math.api.ad#,dunaj.math>>`,
+  `<<dunaj.resource.api.ad#,dunaj.resource>>`,
+  `<<dunaj.resource.file.api.ad#,dunaj.resource.file>>`,
+  `<<dunaj.resource.helper.api.ad#,dunaj.resource.helper>>`,
+  `<<dunaj.resource.selector.api.ad#,dunaj.resource.selector>>`,
+  `<<dunaj.string.api.ad#,dunaj.string>>`,
+  `<<dunaj.type.api.ad#,dunaj.type>>`
+
+* Following namespaces need more examples in their documentation:
+  `<<dunaj.coll.util.api.ad#,dunaj.coll.util>>`,
+  `<<dunaj.compare.api.ad#,dunaj.compare>>`,
+  `<<dunaj.concurrent.api.ad#,dunaj.concurrent>>`,
+  `<<dunaj.concurrent.agent.api.ad#,dunaj.concurrent.agent>>`,
+  `<<dunaj.concurrent.forkjoin.api.ad#,dunaj.concurrent.forkjoin>>`,
+  `<<dunaj.resource.api.ad#,dunaj.resource>>`,
+  `<<dunaj.resource.file.api.ad#,dunaj.resource.file>>`,
+  `<<dunaj.resource.helper.api.ad#,dunaj.resource.helper>>`,
+  `<<dunaj.resource.selector.api.ad#,dunaj.resource.selector>>`,
+  `<<dunaj.type.api.ad#,dunaj.type>>`
+
+++++
+<div id="blo"></div>
+++++

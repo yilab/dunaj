@@ -1,0 +1,21 @@
+{nil
+ "(def v (vec (range 10000)))
+;;=> #'foo.bar/v
+
+(defn insert-hamt
+  [v i x]
+  (into (vec (section v 0 i)) (cons x (section v i))))
+;;=> #'foo.bar/insert-hamt
+
+(defn insert-rrbt
+  [v i x]
+  (cat (conj (slice v 0 i) x) (slice v i)))
+;;=> #'foo.bar/insert-rrbt
+
+(time (dotimes [x 10000] (insert-hamt v x :foo)))
+;; Elapsed time: 8385.197748 msecs
+;;=> nil
+
+(time (dotimes [x 10000] (insert-rrbt v x :foo)))
+;; Elapsed time: 411.800573 msecs
+;;=> nil"}

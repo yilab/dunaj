@@ -1,0 +1,16 @@
+{nil
+ "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.time :refer [calendar-instant-factory]]))
+
+(instant \"2003\")
+;;=> #<BasicInstant 2003-01-01T00:00:00.000000000+00:00>
+
+(canonical (instant \"2003\"))
+;;=> \"2003-01-01T00:00:00.000000000+00:00\"
+
+(num (instant \"2003\"))
+;;=> 1041379200000.000000M
+
+(num (instant calendar-instant-factory \"2003\"))
+;;=> 1041379200000"}

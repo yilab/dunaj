@@ -1,0 +1,37 @@
+{nil
+ "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource.loopback :refer [loopback]]
+            [dunaj.concurrent.thread :refer [sleep]]))
+
+;; non-blocking example
+(with-io-scope
+  (let [l (acquire! (loopback nil :non-blocking? true))]
+    (write! l [1 2 3 4])
+    (let [x (reduce #(println! \"got\" %2) nil (read! l))]
+      (println! (postponed? x))
+      (write! l [5 6 7 8])
+      (unsafe-advance! x))
+    (sleep 1000)))
+;; got 1
+;; got 2
+;; got 3
+;; got 4
+;; true
+;; got 5
+;; got 6
+;; got 7
+;; got 8
+;;=> nil
+
+;; blocking-example
+(with-io-scope
+  (let [l (acquire! (loopback nil))]
+    (write! l [1 2 3 4])
+    (thread (with-io-scope (dored [x (read! l)] (println! \"got\" x))))
+    (sleep 1000)))
+;; got 1
+;; got 2
+;; got 3
+;; got 4
+;;=> nil"}

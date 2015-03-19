@@ -1,0 +1,71 @@
+Dunaj `/ˈdunaɪ/` is a set of <<guide.ad#,core language experiments>>
+aimed to improve Clojure language and its core API. Dunaj is an
+effort to bring Clojure even more towards *simplicity*,
+*consistency* and *performance*.
+
+Dunaj API is intended to be used by regular Clojure developers,
+either for application or library development.
+Bootstrapping, implementation details and other low level stuff are
+left in clojure.core and still accessible for the brave ones.
+
+Dunaj is not a library, but rather a fork of Clojure,
+as changes to the Clojure itself were required. The changes to
+Clojure are hovewer minimal and most of Dunaj is implemented as
+a separate library.
+Dunaj integrates well with Clojure. Most of existing Clojure
+libraries and tools can be used from Dunaj without any changes.
+Dunaj provides a comprehensive <<doc.ad#,documentation>> including
+design notes, <<spec.ad#,specification>> and documentation for its
+<<api.ad#,API>> and <<spi.ad#,SPI>>. Dunaj has been worked on since
+2013 and consists of more than 40k lines of code. It provides 1500
+public functions, macros and vars in more than 90 namespaces.
+Moreover, more than a hundred public protocols are used to define
+virtually every extensible functionality in Dunaj.
+
+*Dunaj implementation is open source. It aims to be fast and stable
+enough to be used in a real world projects.
+See <<start.ad#,Getting Started>> page on how to include Dunaj in
+your project.*
+
+Dunaj was created by http://wagjo.com/[Jozef Wagner], a researcher,
+software engineer and a Clojure contributor.
+Dunaj project, including this website, is a free and open-source
+software, released under same license as Clojure. It is currently
+https://github.com/dunaj-project[hosted on GitHub].
+Patches, pull requests and user contributions are welcomed
+(see <<todo.ad#,future plans>>), but all contributors must sign
+http://clojure.org/contributing[the Clojure CA].
+
+
+== Get in touch
+
+* Follow https://twitter.com/DunajProject[@DunajProject] to receive
+  latest updates
+* Join the https://groups.google.com/forum/#!forum/dunaj-project[discussion group]
+* Send your questions to dunaj@dunaj.org
+* Receive announcements by
+  http://eepurl.com/bho9Aj[signing up for low-frequency newsletter]
+* Chat in the irc://irc.freenode.net/#dunaj[#dunaj] irc channel
+  at https://freenode.net[freenode]
+
+
+== License
+
+Copyright (C) 2013, 2015, Jozef Wagner. All rights reserved.
+
+Additional copyright for parts of documentation and/or
+underlying implementation:
+Copyright (C) 2008, 2015, Rich Hickey and Clojure contributors.
+
+The use and distribution terms for this software are covered by the
+Eclipse Public License 1.0
+(http://opensource.org/licenses/eclipse-1.0.php) which can be
+found in the file epl-v10.html at the root of this distribution.
+By using this software in any fashion, you are agreeing to be bound
+by the terms of this license.
+You must not remove this notice, or any other, from this software.
+
+
+++++
+<div id="blo"></div>
+++++

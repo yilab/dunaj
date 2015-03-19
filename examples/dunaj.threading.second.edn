@@ -1,0 +1,18 @@
+{nil
+ "(ns foo.bar
+  (:api dunaj)
+  (:require [dunaj.threading.second :as ->]))
+
+(-> {:a 1 :b 2}
+    (->/update :b inc)
+    (->/when (< (rand) 0.5)
+      (->/update :a dec)))
+;;=> {:b 3, :a 1}
+;; or
+;;=> {:b 3, :a 0}
+
+(-> [{:foo1 0 :foo2 1 :foo3 -10} \"a-bar\"]
+    (->/first
+     (do (reduce + (map val <>))))
+    (->/second keyword))
+;;=> [-9 :a-bar]"}

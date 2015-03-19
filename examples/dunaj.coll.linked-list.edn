@@ -1,0 +1,29 @@
+{nil
+ "(->lst 1 2 3 4 5)
+   ;;=> (1 2 3 4 5)
+
+   (lst [1 2 3 4 5])
+   ;;=> (1 2 3 4 5)
+
+   ;; peek returns the front (first) item
+   (peek (->lst 1 2 3 4 5))
+   ;;=> 1
+
+   ;; pop removes front (first) item
+   (pop (->lst 1 2 3 4 5))
+   ;;=> (2 3 4 5)
+
+   ;; conj inserts into the front
+   (conj (->lst 1 2 3 4 5) :foo)
+   ;;=> (:foo 1 2 3 4 5)"
+ linked-list-factory
+ "(ns foo.bar
+     (:api dunaj)
+     (:require [dunaj.coll :refer [->collection collection]]
+               [dunaj.coll.linked-list :refer [linked-list-factory]]))
+
+   (->collection linked-list-factory 1 2 3 4 5)
+   ;;=> (1 2 3 4 5)
+
+   (collection linked-list-factory [1 2 3 4 5])
+   ;;=> (1 2 3 4 5)"}

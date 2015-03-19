@@ -1,0 +1,43 @@
+{nil
+ "(ns foo.bar
+     (:api bare)
+     (:require
+       [clojure.core :refer [* do println apply loop if zero? dec]])
+     (:import [java.lang String]))
+
+   (* 1 2)
+   ;;=> 2
+
+   (+ 1 2)
+   ;; Exception: Unable to resolve symbol: + in this context
+
+   (clojure.core/+ 1 2)
+   ;;=> 3
+
+   String
+   ;;=> java.lang.String
+
+   Object
+   ;; Exception: Unable to resolve symbol: Object in this context
+
+   java.lang.Object
+   ;;=> java.lang.Object
+
+   (clojure.core/defmacro recur
+     \"A chatty recur.\"
+     [& args]
+     `(do
+        (println \"recur with\" ~@args)
+        (clojure.core/recur ~@args)))
+   ;;=> #'foo.bar/recur
+
+   (loop [i 5]
+     (if (zero? i)
+       i
+       (recur (dec i))))
+   ;; recur with 4
+   ;; recur with 3
+   ;; recur with 2
+   ;; recur with 1
+   ;; recur with 0
+   ;;=> 0"}

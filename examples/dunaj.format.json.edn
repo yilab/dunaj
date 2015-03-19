@@ -1,0 +1,85 @@
+{nil
+ ["(ns foo.baz
+  (:api dunaj))
+
+;;; Querying Freebase
+
+(def search-url \"https://www.googleapis.com/freebase/v1/search?query=Rich%20Hickey\")
+;;=> #'foo.baz/search-url
+
+(def response (with-scope (->> search-url slurp (parse json) first)))
+;;=> #'foo.baz/response
+
+(->> (get response \"result\")
+     (take 2)
+     (map #(->str (get % \"name\") \": \" (get-in % [\"notable\" \"name\"])))
+     (interpose \\newline)
+     str)
+;;=> \"Clojure: Programming Language\\nRich Hickey: Programming Language Developer\"
+
+(def rich-url \"https://www.googleapis.com/freebase/v1/topic/en/rich_hickey\")
+;;=> #'foo.baz/rich-url
+
+(def response (with-scope (->> rich-url slurp (parse-whole json))))
+;;=> #'foo.baz/response
+
+(get-in response [\"property\" \"/common/topic/article\" \"values\" 0 \"property\" \"/common/document/text\" \"values\" 0 \"text\"])
+;;=> \"Rich Hickey is the creator of the Clojure programming language, a Lisp dialect built on top of...\""
+  "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.format.json :refer [lazy-json]]))
+
+;;; Processing infinite inputs
+
+(def integers
+  (->> (range)
+       (map ->str)
+       (interpose \", \")
+       (cons \"[ \")
+       (mapcat identity)))
+;; #'foo.baz/integers
+
+(str (take 50 integers))
+;;=> \"[ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14\"
+
+(vec (take 20 (first (parse lazy-json integers))))
+;;=> [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19]
+
+;;; Printing JSON
+
+(str (print-one json (current-version)))
+;;=> \"{\\\"major\\\":2,\\\"minor\\\":0,\\\"incremental\\\":0,\\\"qualifier\\\":\\\"dunaj\\\",\\\"interim\\\":true}\"
+
+(str (print-one json (vec (range 20))))
+;;=> \"[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]\""
+  "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.format.json :refer [pretty-json]]))
+
+(defn dopp [x] (str (print pretty-json x)))
+
+;; pretty print truncating long string literal
+
+(:pretty-string-limit pretty-json)
+;;=> 200
+
+(dopp [(str (range 1000))])
+;; => \"\\\"01234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768697071727374757677787980818283848586878889909192939495969798991001011021...\\\"\"
+
+;; pretty printing up to specified nesting level
+
+(:pretty-level-limit pretty-json)
+;;=> 5
+
+(dopp [0 [1 [2 [3 [4 [5 [6 [7 [8 [9]]]]]]]]]])
+;;=> \"0 [1, [2, [3, [4, [5, #]]]]]\"
+
+(dopp [0 {1 {2 {3 {4 {5 {6 {7 {8 {9 10}}}}}}}} 2 3}])
+;;=> \"0 {\\\"1\\\": {\\\"2\\\": {\\\"3\\\": {\\\"4\\\": {\\\"5\\\": #}}}}, \\\"2\\\": 3}\"
+
+;; pretty printing up to given item limit item
+(:pretty-item-limit pretty-json)
+;;=> 100
+
+(dopp [0 (vec (range 1000))])
+;;=> \"0\\n[\\n  0,\\n  1,\\n  2,\\n  3,\\n  4,\\n  5,\\n  6,\\n  7,\\n  8,\\n  9,\\n  10,\\n  11,\\n  12,\\n  13,\\n  14,\\n  15,\\n  16,\\n  17,\\n  18,\\n  19,\\n  20,\\n  21,\\n  22,\\n  23,\\n  24,\\n  25,\\n  26,\\n  27,\\n  28,\\n  29,\\n  30,\\n  31,\\n  32,\\n  33,\\n  34,\\n  35,\\n  36,\\n  37,\\n  38,\\n  39,\\n  40,\\n  41,\\n  42,\\n  43,\\n  44,\\n  45,\\n  46,\\n  47,\\n  48,\\n  49,\\n  50,\\n  51,\\n  52,\\n  53,\\n  54,\\n  55,\\n  56,\\n  57,\\n  58,\\n  59,\\n  60,\\n  61,\\n  62,\\n  63,\\n  64,\\n  65,\\n  66,\\n  67,\\n  68,\\n  69,\\n  70,\\n  71,\\n  72,\\n  73,\\n  74,\\n  75,\\n  76,\\n  77,\\n  78,\\n  79,\\n  80,\\n  81,\\n  82,\\n  83,\\n  84,\\n  85,\\n  86,\\n  87,\\n  88,\\n  89,\\n  90,\\n  91,\\n  92,\\n  93,\\n  94,\\n  95,\\n  96,\\n  97,\\n  98,\\n  99,\\n  ...\\n]\""]}

@@ -1,0 +1,19 @@
+{nil
+ "(ns foo.bar
+     (:api dunaj)
+     (:require [dunaj.coll.empty-list :refer [empty-list]]))
+
+   ;; prefer using nil to empty-list, and prefer using () to empty list
+
+   (conj nil 1 2)
+   ;;=> (2 1)
+
+   (conj () 1 2) ;; less idiomatic
+   ;;=> (2 1)
+
+   (conj empty-list 1 2) ;; even less idiomatic
+   ;;=> (2 1)
+
+   ;; but empty-list has its valid applications
+   (def x (chan 10))
+   (>!! x empty-list) ;; for cases where we have to pass a list, as channels don't accept nils"}

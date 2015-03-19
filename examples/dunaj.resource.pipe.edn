@@ -1,0 +1,73 @@
+{nil
+ "(ns foo.baz
+  (:api dunaj)
+  (:require [dunaj.resource.pipe :refer [pipe-factory]]
+            [dunaj.concurrent.thread :refer [sleep]]))
+
+;; blocking example
+(with-scope
+  (let [[sink source] (acquire! pipe-factory)]
+    (future
+      (println! \"monitor enter \" (config sink))
+      (io!
+       (try
+         (doall (map #(println! \"received batch\" (vec %))
+                     (batched (read! source))))
+         (catch java.nio.channels.AsynchronousCloseException e
+           (println! \"monitor exit\"))
+         (catch java.lang.Exception e
+           (println! \"exception in monitor \"
+                     (clojure.stacktrace/print-stack-trace e))))))
+    
+    (write! sink [1 2 3 4 5 6])
+    
+    (sleep 1000)
+
+    (write! sink [7 8 9 10])
+    
+    (sleep 1000)))
+;; monitor enter  {:batch-size 8192 :selector-provider #<EPollSelectorProvider sun.nio.ch.EPollSelectorProvider@7cf47761> :pipe #<PipeImpl sun.nio.ch.PipeImpl@5146a9b6> :non-blocking? false}
+;; received batch [1 2 3 4 5 6]
+;; received batch [7 8 9 10]
+;; monitor exit
+;;=> nil
+
+;; non-blocking with selector
+(with-io-scope
+  (let [[sink1 source1] (acquire! pipe-factory :non-blocking? true)
+        [sink2 source2] (acquire! pipe-factory :non-blocking? true)
+        sel (acquire! (selector))
+        dumpf #(dored [x (read! (:resource %))] (println! \"got\" x))
+        rf (fn [ret val]
+             (println! \"resource is ready\" val) (dumpf val) ret)]
+    (register! sel source1 :all)
+    (register! sel source2 :all)
+    (thread
+     (io!
+      (loop [x (reduce rf nil (read! sel))]
+        (if (postponed? x)
+          (do (println! \"resources ready:\" (select sel))
+              (recur (unsafe-advance! x)))
+          (println! \"end\")))))
+    (write! sink1 [1 2 3])
+    (write! sink2 [4 5 6])
+    (sleep 1000)
+    (write! sink2 [7 8 9])
+    (sleep 1000)))
+;; resources ready: 2
+;; resource is ready {:ready (:read) :resource #<SourceResource dunaj.resource.pipe.SourceResource@7e9013ff>}
+;; got 1
+;; got 2
+;; got 3
+;; resource is ready {:ready (:read) :resource #<SourceResource dunaj.resource.pipe.SourceResource@3b928249>}
+;; got 4
+;; got 5
+;; got 6
+;; resources ready: 1
+;; resource is ready {:ready (:read) :resource #<SourceResource dunaj.resource.pipe.SourceResource@3b928249>}
+;; got 7
+;; got 8
+;; got 9
+;; resources ready: 0
+;; end
+;;=> nil"}
